@@ -1,0 +1,96 @@
+{
+  "benchmark_suite": {
+    "metadata": {
+      "created_by": "Jack Ogaja",
+      "created_at": "2025-06-26",
+      "description": "Production-safe benchmarking with minimal impact",
+      "version": "1.0.0"
+    },
+    "core": {
+      "safety": {
+        "enabled": true,
+        "max_cpu_percent": 30,
+        "max_memory_percent": 40,
+        "throttle_step_percent": 5,
+        "abort_threshold_cpu_percent": 50,
+        "abort_threshold_memory_percent": 60,
+        "monitoring_interval_seconds": 1,
+        "progressive_load": true,
+        "progressive_load_steps": 5
+      },
+      "output": {
+        "base_directory": "./prod_benchmark_results"
+      }
+    },
+    "tiers": {
+      "tier_definitions": [
+        {
+          "name": "prod_tier",
+          "path": "/mnt/data",
+          "type": "auto",
+          "description": "Production storage"
+        }
+      ],
+      "default_tier": "prod_tier"
+    },
+    "benchmark_profiles": {
+      "ultra_safe": {
+        "description": "Ultra-low impact benchmark for production",
+        "duration_seconds": 30,
+        "block_sizes": ["4k", "64k"],
+        "patterns": ["read", "randread"],
+        "io_depth": 8,
+        "direct": true,
+        "numjobs": 1,
+        "safety": {
+          "max_cpu_percent": 20,
+          "throttle_step_percent": 2
+        }
+      },
+      "off_hours": {
+        "description": "For off-peak hours with slightly higher load",
+        "duration_seconds": 60,
+        "block_sizes": ["4k", "64k", "1m"],
+        "patterns": ["read", "randread", "write"],
+        "io_depth": 16,
+        "direct": true,
+        "numjobs": 2,
+        "safety": {
+          "max_cpu_percent": 40
+        }
+      }
+    },
+    "execution": {
+      "engine": "fio",
+      "cooldown_seconds": 60,
+      "pre_benchmark_sync": false,
+      "drop_caches": false,
+      "default_profile": "ultra_safe"
+    },
+    "analysis": {
+      "statistical": {
+        "enabled": true
+      },
+      "time_series": {
+        "enabled": true
+      },
+      "anomaly_detection": {
+        "enabled": false
+      },
+      "network": {
+        "enabled": false
+      }
+    },
+    "visualization": {
+      "charts": {
+        "enabled": true,
+        "types": ["bar", "line"],
+        "format": "html"
+      },
+      "reports": {
+        "enabled": true,
+        "formats": ["html", "json"]
+      }
+    }
+  }
+}
