@@ -7,8 +7,8 @@ This module provides classes to represent, store, and process benchmark data
 collected during benchmark execution. It enables flexible data manipulation,
 filtering, and aggregation for analysis.
 
-Author: Jack Ogaja
-Date: 2025-06-26
+Author: JackOgaja
+Date: 2025-06-30 22:02:03
 """
 
 import logging
@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
-from tdiobench.core.exceptions import DataValidationError
+from tdiobench.core.benchmark_exceptions import DataValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -1683,4 +1683,250 @@ class BenchmarkData:
             merged.set_time_series_data(merged_ts)
         elif self_ts:
             merged.set_time_series_data(self_ts)
-        elif other_ts
+        elif other_ts:
+            merged.set_time_series_data(other_ts)
+        
+        # Merge engine results
+        self_results = self.get_engine_results()
+        other_results = other.get_engine_results()
+        
+        for engine, ops in self_results.items():
+            for op, results in ops.items():
+                merged.add_engine_result(engine, op, results)
+    
+        for engine, ops in other_results.items():
+            for op, results in ops.items():
+                # Skip if already added from self
+                if engine in self_results and op in self_results[engine]:
+                    continue
+                merged.add_engine_result(engine, op, results)
+        
+        # Merge benchmark results
+        for result in self.get_benchmark_results():
+            merged.add_benchmark_result(result)
+            
+        for result in other.get_benchmark_results():
+            # Skip if already added from self
+            if "runs" in self._data and result.run_id in self._data["runs"]:
+                continue
+            merged.add_benchmark_result(result)
+        
+        # Merge other data (but not time_series, engine_results, or runs)
+        for key, value in self._data.items():
+            if key not in ["time_series", "engine_results", "runs"]:
+                merged.add_data(key, value)
+        
+        for key, value in other._data.items():
+            if key not in ["time_series", "engine_results", "runs"]:
+                # Skip if already added from self
+                if key in self._data:
+                    continue
+                merged.add_data(key, value)
+        
+        return merged
+
+    def validate(self) -> Tuple[bool, List[str]]:
+        """
+        Validate the benchmark data for consistency and completeness.
+        
+        Returns:
+            Tuple of (is_valid, list_of_validation_messages)
+        """
+        messages = []
+        is_valid = True
+        
+        # Check metadata
+        if not self._metadata:
+            messages.append("Missing metadata")
+            is_valid = False
+        else:
+            required_metadata = ["id", "created_at", "created_by"]
+            for field in required_metadata:
+                if field not in self._metadata:
+                    messages.append(f"Missing required metadata field: {field}")
+                    is_valid = False
+        
+        # Check data content
+        if not self._data:
+            messages.append("No benchmark data available")
+            is_valid = False
+        
+        # Validate time series data if present
+        if "time_series" in self._data:
+            if not isinstance(self._data["time_series"], list):
+                messages.append("Time series data is not a list")
+                is_valid = False
+            elif not self._data["time_series"]:
+                messages.append("Time series data is empty")
+            else:
+                # Check first time series point
+                first_point = self._data["time_series"][0]
+                if not isinstance(first_point, dict):
+                    messages.append("Time series data points must be dictionaries")
+                    is_valid = False
+                elif "timestamp" not in first_point:
+                    messages.append("Time series data points must have timestamps")
+                    is_valid = False
+        
+        # Validate engine results if present
+        if "engine_results" in self._data:
+            if not isinstance(self._data["engine_results"], dict):
+                messages.append("Engine results must be a dictionary")
+                is_valid = False
+            else:
+                for engine, ops in self._data["engine_results"].items():
+                    if not isinstance(ops, dict):
+                        messages.append(f"Operations for engine {engine} must be a dictionary")
+                        is_valid = False
+                        break
+        
+        # Validate benchmark runs if present
+        if "runs" in self._data:
+            if not isinstance(self._data["runs"], dict):
+                messages.append("Benchmark runs must be a dictionary")
+                is_valid = False
+            else:
+                for run_id, run_data in self._data["runs"].items():
+                    if not isinstance(run_data, dict):
+                        messages.append(f"Run data for {run_id} must be a dictionary")
+                        is_valid = False
+                    elif "metrics" not in run_data:
+                        messages.append(f"Run data for {run_id} missing required 'metrics' field")
+                        is_valid = False
+        
+        return is_valid, messages
+    
+    def to_json(self, filepath: Optional[str] = None, indent: int = 2) -> Optional[str]:
+        """
+        Convert benchmark data to JSON.
+        
+        Args:
+            filepath: Optional file path to save JSON
+            indent: Indentation level for JSON formatting
+            
+        Returns:
+            JSON string if filepath is None, otherwise None
+        """
+        # Prepare exportable data
+        export_data = {
+            "metadata": self._metadata,
+            "data": self._data
+        }
+        
+        # Convert to JSON
+        json_data = json.dumps(export_data, indent=indent, default=self._json_serializer)
+        
+        # Save to file if path provided
+        if filepath:
+            with open(filepath, 'w') as f:
+                f.write(json_data)
+            logger.info(f"Saved benchmark data to JSON file: {filepath}")
+            return None
+        
+        return json_data
+    
+    def to_pickle(self, filepath: str) -> None:
+        """
+        Save benchmark data to a pickle file.
+        
+        Args:
+            filepath: File path to save pickle
+        """
+        with open(filepath, 'wb') as f:
+            pickle.dump(self, f)
+        logger.info(f"Saved benchmark data to pickle file: {filepath}")
+    
+    @staticmethod
+    def _json_serializer(obj: Any) -> Any:
+        """
+        Custom JSON serializer for handling non-serializable objects.
+        
+        Args:
+            obj: Object to serialize
+        
+        Returns:
+            JSON-serializable version of the object
+        """
+        if isinstance(obj, (datetime, pd.Timestamp)):
+            return obj.isoformat()
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if pd.isna(obj):
+            return None
+    
+        raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+    
+    @classmethod
+    def from_json(cls, json_data: Union[str, Dict], filepath: Optional[str] = None) -> 'BenchmarkData':
+        """
+        Create BenchmarkData from JSON.
+        
+        Args:
+            json_data: JSON string or parsed dictionary
+            filepath: Optional file path to load JSON from
+            
+        Returns:
+            New BenchmarkData instance
+        """
+        if filepath:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            logger.info(f"Loaded benchmark data from JSON file: {filepath}")
+        elif isinstance(json_data, str):
+            data = json.loads(json_data)
+        else:
+            data = json_data
+        
+        metadata = data.get("metadata", {})
+        benchmark_data = data.get("data", {})
+        
+        return cls(data=benchmark_data, metadata=metadata)
+    
+    @classmethod
+    def from_pickle(cls, filepath: str) -> 'BenchmarkData':
+        """
+        Load BenchmarkData from a pickle file.
+        
+        Args:
+            filepath: File path to load pickle from
+            
+        Returns:
+            Loaded BenchmarkData instance
+        """
+        with open(filepath, 'rb') as f:
+            instance = pickle.load(f)
+            
+        if not isinstance(instance, cls):
+            raise TypeError(f"Loaded object is not a {cls.__name__} instance")
+            
+        logger.info(f"Loaded benchmark data from pickle file: {filepath}")
+        return instance
+    
+    def __repr__(self) -> str:
+        """String representation of the BenchmarkData instance."""
+        ts_count = len(self._data.get("time_series", []))
+        engines = list(self._data.get("engine_results", {}).keys())
+        return (f"BenchmarkData(id={self.id}, created_at={self.created_at}, "
+                f"time_series_points={ts_count}, engines={engines})")
+    
+    def __eq__(self, other: object) -> bool:
+        """Check if two BenchmarkData instances are equal."""
+        if not isinstance(other, BenchmarkData):
+            return False
+        
+        # Compare metadata (except id which will be different)
+        self_meta = self._metadata.copy()
+        other_meta = other._metadata.copy()
+        
+        # Remove comparison-irrelevant fields
+        for meta in [self_meta, other_meta]:
+            for field in ["id", "created_at"]:
+                if field in meta:
+                    del meta[field]
+        
+        # Compare data content
+        return self_meta == other_meta and self._data == other._data
