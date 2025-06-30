@@ -1,0 +1,26 @@
+# Include license and readme
+include LICENSE
+include README.md
+#++ include CHANGELOG.md
+include CONTRIBUTING.md
+
+# Include configuration files
+include benchmark_suite/config/schema.json
+include benchmark_suite/config/default_config.json
+
+# Include visualization templates
+#++recursive-include benchmark_suite/visualization/templates *.j2 *.html *.css *.js
+
+# Include documentation
+#++recursive-include docs *.md *.png *.svg *.jpg *.html *.css
+
+# Include examples
+recursive-include examples *.json *.py *.md
+
+# Exclude tests, CI, and development files
+recursive-exclude tests *
+recursive-exclude .github *
+exclude .gitignore
+exclude .flake8
+exclude mypy.ini
+exclude tox.ini
