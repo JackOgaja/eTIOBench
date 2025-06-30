@@ -1,0 +1,88 @@
+benchmark_suite:
+  metadata:
+    created_by: "Jack Ogaja"
+    created_at: "2025-06-26"
+    description: "Multi-tier comparative benchmark configuration"
+    version: "1.0.0"
+  
+  core:
+    safety:
+      enabled: true
+      max_cpu_percent: 70
+      max_memory_percent: 80
+    
+    output:
+      base_directory: "./tiered_benchmark_results"
+  
+  tiers:
+    tier_definitions:
+      - name: "nvme_tier"
+        path: "/mnt/nvme"
+        type: "nvme"
+        description: "NVMe storage tier"
+      
+      - name: "ssd_tier"
+        path: "/mnt/ssd"
+        type: "ssd"
+        description: "SSD storage tier"
+      
+      - name: "hdd_tier"
+        path: "/mnt/hdd"
+        type: "hdd"
+        description: "HDD storage tier"
+    
+    auto_detect: true
+  
+  benchmark_profiles:
+    uniform_comparison:
+      description: "Identical workload across all tiers for direct comparison"
+      duration_seconds: 120
+      block_sizes: ["4k", "64k", "1m"]
+      patterns: ["read", "write", "randread", "randwrite"]
+      io_depth: 32
+      direct: true
+    
+    tier_optimized:
+      description: "Workload optimized for each tier type"
+      duration_seconds: 120
+      custom_tier_params:
+        nvme:
+          block_sizes: ["4k", "16k"]
+          io_depth: 64
+          numjobs: 8
+        ssd:
+          block_sizes: ["16k", "64k"]
+          io_depth: 32
+          numjobs: 4
+        hdd:
+          block_sizes: ["64k", "1m"]
+          io_depth: 16
+          numjobs: 2
+      patterns: ["read", "write", "randread", "randwrite"]
+      direct: true
+  
+  execution:
+    engine: "fio"
+    cooldown_seconds: 60
+    default_profile: "uniform_comparison"
+  
+  analysis:
+    comparative:
+      enabled: true
+      min_performance_difference_percent: 5
+    
+    time_series:
+      enabled: true
+    
+    anomaly_detection:
+      enabled: true
+  
+  visualization:
+    charts:
+      types: ["bar", "line", "heatmap"]
+      interactive: true
+    
+    reports:
+      formats: ["html"]
+      include_charts: true
+      include_recommendations: true
