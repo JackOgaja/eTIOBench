@@ -1,0 +1,255 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Enhanced Tiered Storage I/O Benchmark Suite Configuration",
+  "description": "Schema for validating benchmark suite configuration files",
+  "type": "object",
+  "required": ["benchmark_suite"],
+  "properties": {
+    "benchmark_suite": {
+      "type": "object",
+      "required": ["core", "tiers", "benchmark_profiles", "execution"],
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "created_by": { "type": "string" },
+            "created_at": { "type": "string" },
+            "description": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "core": {
+          "type": "object",
+          "properties": {
+            "safety": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "max_cpu_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                "max_memory_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                "throttle_step_percent": { "type": "number", "minimum": 1, "maximum": 50 },
+                "abort_threshold_cpu_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                "abort_threshold_memory_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                "monitoring_interval_seconds": { "type": "number", "minimum": 0.1 },
+                "progressive_load": { "type": "boolean" },
+                "progressive_load_steps": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "output": {
+              "type": "object",
+              "properties": {
+                "base_directory": { "type": "string" },
+                "create_timestamp_subdirectory": { "type": "boolean" },
+                "retain_raw_data": { "type": "boolean" },
+                "data_retention_days": { "type": "integer", "minimum": 1 },
+                "compress_old_results": { "type": "boolean" }
+              }
+            },
+            "logging": {
+              "type": "object",
+              "properties": {
+                "level": { "type": "string", "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] },
+                "log_to_file": { "type": "boolean" },
+                "log_directory": { "type": "string" },
+                "rotation_size_mb": { "type": "number", "minimum": 0.1 },
+                "retention_count": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        },
+        "tiers": {
+          "type": "object",
+          "required": ["tier_definitions"],
+          "properties": {
+            "tier_definitions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "path", "type"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "path": { "type": "string" },
+                  "type": { "type": "string", "enum": ["nvme", "ssd", "hdd", "parallel_fs", "auto"] },
+                  "description": { "type": "string" },
+                  "expected_min_throughput_MBps": { "type": "number", "minimum": 0 },
+                  "expected_min_iops": { "type": "number", "minimum": 0 },
+                  "expected_max_latency_ms": { "type": "number", "minimum": 0 },
+                  "parallel_file_per_process": { "type": "boolean" },
+                  "stripe_count": { "type": "integer", "minimum": 1 },
+                  "stripe_size": { "type": "string" }
+                }
+              }
+            },
+            "auto_detect": { "type": "boolean" },
+            "default_tier": { "type": "string" }
+          }
+        },
+        "benchmark_profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["description", "duration_seconds", "block_sizes", "patterns"],
+            "properties": {
+              "description": { "type": "string" },
+              "duration_seconds": { "type": "integer", "minimum": 1 },
+              "block_sizes": { 
+                "type": "array", 
+                "items": { "type": "string" }
+              },
+              "patterns": { 
+                "type": "array", 
+                "items": { "type": "string", "enum": ["read", "write", "randread", "randwrite", "randrw"] }
+              },
+              "io_depth": { "type": "integer", "minimum": 1 },
+              "direct": { "type": "boolean" },
+              "numjobs": { "type": "integer", "minimum": 1 },
+              "rwmixread": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "create_files": { "type": "boolean" },
+              "file_count": { "type": "integer", "minimum": 1 },
+              "file_size": { "type": "string" },
+              "custom_tier_params": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object"
+                }
+              },
+              "safety": {
+                "type": "object",
+                "properties": {
+                  "max_cpu_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                  "max_memory_percent": { "type": "number", "minimum": 1, "maximum": 100 },
+                  "throttle_step_percent": { "type": "number", "minimum": 1, "maximum": 50 }
+                }
+              }
+            }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "engine": { "type": "string" },
+            "engine_path": { "type": "string" },
+            "parallel_tier_testing": { "type": "boolean" },
+            "cooldown_seconds": { "type": "integer", "minimum": 0 },
+            "pre_benchmark_sync": { "type": "boolean" },
+            "drop_caches": { "type": "boolean" },
+            "default_profile": { "type": "string" }
+          }
+        },
+        "analysis": {
+          "type": "object",
+          "properties": {
+            "statistical": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "percentiles": { 
+                  "type": "array", 
+                  "items": { "type": "number", "minimum": 0, "maximum": 100 }
+                },
+                "detect_outliers": { "type": "boolean" },
+                "outlier_method": { "type": "string", "enum": ["zscore", "iqr", "isolation_forest"] },
+                "outlier_threshold": { "type": "number", "minimum": 0 }
+              }
+            },
+            "time_series": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "trend_analysis": { "type": "boolean" },
+                "seasonality_detection": { "type": "boolean" },
+                "smoothing_window": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "anomaly_detection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "method": { "type": "string", "enum": ["z_score", "moving_avg", "isolation_forest", "seasonal"] },
+                "threshold": { "type": "number", "minimum": 0 },
+                "min_data_points": { "type": "integer", "minimum": 5 },
+                "contextual": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "window_size": { "type": "integer", "minimum": 3 }
+                  }
+                },
+                "forecasting": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "model": { "type": "string", "enum": ["arima", "prophet", "lstm"] }
+                  }
+                }
+              }
+            },
+            "network": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "detect_protocol": { "type": "boolean" },
+                "packet_capture": { "type": "boolean" },
+                "interface_monitoring": { "type": "boolean" },
+                "thresholds": {
+                  "type": "object",
+                  "properties": {
+                    "utilization_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+                    "retransmit_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+                    "latency_ms": { "type": "number", "minimum": 0 }
+                  }
+                },
+                "correlation_threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            },
+            "comparative": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "baseline_path": { "type": ["string", "null"] },
+                "significance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+                "min_performance_difference_percent": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "visualization": {
+          "type": "object",
+          "properties": {
+            "charts": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "types": { 
+                  "type": "array", 
+                  "items": { "type": "string", "enum": ["bar", "line", "scatter", "heatmap", "box", "histogram"] }
+                },
+                "output_dir": { "type": "string" },
+                "format": { "type": "string", "enum": ["html", "png", "svg", "pdf", "jpg"] },
+                "width": { "type": "integer", "minimum": 100 },
+                "height": { "type": "integer", "minimum": 100 },
+                "interactive": { "type": "boolean" },
+                "theme": { "type": "string", "enum": ["default", "dark", "light", "colorblind"] }
+              }
+            },
+            "reports": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "formats": { 
+                  "type": "array", 
+                  "items": { "type": "string", "enum": ["html", "markdown", "json", "csv", "pdf"] }
+                },
+                "output_dir": { "type": "string" },
+                "include_charts": { "type": "boolean" },
+                "include_recommendations": { "type": "boolean" },
+                "template_dir": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
