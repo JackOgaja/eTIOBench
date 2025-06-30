@@ -21,7 +21,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 
 from tdiobench.core.exceptions import AnalysisError
 from tdiobench.analysis.base_analyzer import BaseAnalyzer
-from tdiobench.core.analysis_result import AnalysisResult
+from tdiobench.core.benchmark_analysis import AnalysisResult
 
 logger = logging.getLogger(__name__)
 
