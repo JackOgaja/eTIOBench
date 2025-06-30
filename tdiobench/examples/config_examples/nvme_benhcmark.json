@@ -1,0 +1,72 @@
+{
+  "benchmark_suite": {
+    "metadata": {
+      "created_by": "Jack Ogaja",
+      "created_at": "2025-06-26",
+      "description": "High-performance NVMe benchmarking configuration",
+      "version": "1.0.0"
+    },
+    "core": {
+      "safety": {
+        "enabled": true,
+        "max_cpu_percent": 80,
+        "max_memory_percent": 85
+      },
+      "output": {
+        "base_directory": "./nvme_benchmark_results"
+      }
+    },
+    "tiers": {
+      "tier_definitions": [
+        {
+          "name": "nvme_tier",
+          "path": "/mnt/nvme",
+          "type": "nvme",
+          "description": "NVMe storage tier for high-performance testing",
+          "expected_min_throughput_MBps": 3000,
+          "expected_min_iops": 700000,
+          "expected_max_latency_ms": 0.2
+        }
+      ],
+      "default_tier": "nvme_tier"
+    },
+    "benchmark_profiles": {
+      "nvme_intensive": {
+        "description": "High-intensity NVMe performance test",
+        "duration_seconds": 180,
+        "block_sizes": ["4k", "16k", "64k", "256k", "1m"],
+        "patterns": ["randread", "randwrite", "randrw"],
+        "io_depth": 128,
+        "direct": true,
+        "numjobs": 8
+      },
+      "nvme_latency_focused": {
+        "description": "NVMe latency-sensitive test",
+        "duration_seconds": 120,
+        "block_sizes": ["4k"],
+        "patterns": ["randread", "randwrite"],
+        "io_depth": 1,
+        "direct": true,
+        "numjobs": 1
+      }
+    },
+    "execution": {
+      "engine": "fio",
+      "pre_benchmark_sync": true,
+      "drop_caches": true,
+      "default_profile": "nvme_intensive"
+    },
+    "analysis": {
+      "anomaly_detection": {
+        "enabled": true,
+        "threshold": 2.0
+      }
+    },
+    "visualization": {
+      "charts": {
+        "types": ["line", "scatter", "heatmap"],
+        "interactive": true
+      }
+    }
+  }
+}
