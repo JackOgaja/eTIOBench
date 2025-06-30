@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Benchmark Configuration
+Benchmark configuration module for storage benchmark suite.
 
-This module provides standardized configuration management for the
-Tiered Storage I/O Benchmark Suite.
+This module provides the BenchmarkConfig class for storing, validating,
+and managing benchmark configuration settings.
 
 Author: Jack Ogaja
 Date: 2025-06-26
@@ -11,335 +12,293 @@ Date: 2025-06-26
 
 import os
 import json
-import yaml
 import logging
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Optional, Any, Union, Type, TYPE_CHECKING
 
-from tdiobench.core.benchmark_exceptions import BenchmarkConfigError
-from tdiobench.utils.error_handling import safe_operation
+# Import non-circular dependencies
+from benchmark_suite.core.exceptions import ConfigurationError
 
-logger = logging.getLogger("tdiobench.core.config")
+# Use TYPE_CHECKING for type hints to avoid runtime imports
+if TYPE_CHECKING:
+    from benchmark_suite.core.benchmark_suite import BenchmarkSuite
+    from benchmark_suite.engines.base_engine import BaseEngine
 
-# Standard configuration schema
-CONFIG_SCHEMA = {
-    "tdiobench": {
-        "core": {
-            "safety": {
-                "enabled": True,
-                "max_cpu_percent": 90,
-                "max_memory_percent": 90
-            },
-            "logging": {
-                "level": "info",
-                "file": None
-            }
-        },
-        "collection": {
-            "time_series": {
-                "enabled": True,
-                "interval": 1.0,
-                "buffer_size": 1000,
-                "db_path": None
-            },
-            "system_metrics": {
-                "enabled": True,
-                "interval": 5.0,
-                "network": {
-                    "enabled": True,
-                    "connectivity_check": False
-                }
-            }
-        },
-        "analysis": {
-            "statistics": {
-                "enabled": True,
-                "confidence_level": 95.0,
-                "outlier_detection": True,
-                "percentiles": [50, 95, 99, 99.9]
-            },
-            "time_series": {
-                "enabled": True,
-                "decomposition": {
-                    "enabled": True
-                },
-                "trend_detection": {
-                    "enabled": True
-                },
-                "seasonality_detection": {
-                    "enabled": True
-                },
-                "correlation_analysis": {
-                    "enabled": True
-                },
-                "forecasting": {
-                    "enabled": False
-                }
-            },
-            "network": {
-                "enabled": True,
-                "packet_capture": False,
-                "detect_protocol": True,
-                "interface_monitoring": True
-            },
-            "anomaly_detection": {
-                "enabled": True,
-                "method": "z_score",
-                "threshold": 3.0,
-                "min_data_points": 10,
-                "contextual": {
-                    "enabled": True
-                }
-            }
-        },
-        "visualization": {
-            "reports": {
-                "enabled": True,
-                "formats": ["html", "json"],
-                "template_dir": "./templates"
-            },
-            "charts": {
-                "enabled": True,
-                "types": ["bar", "line"],
-                "output_dir": "./charts",
-                "format": "html",
-                "width": 800,
-                "height": 400,
-                "trendline": {
-                    "type": "linear",
-                    "forecast_horizon": 0
-                }
-            }
-        },
-        "results": {
-            "type": "file",
-            "base_dir": "./results",
-            "db_path": None,
-            "compression": False
-        },
-        "engines": {
-            "fio": {
-                "path": "fio",
-                "cleanup_test_files": True
-            },
-            "dd": {
-                "path": "dd",
-                "bs_default": "1M",
-                "count_default": 1000
-            }
-        }
-    }
-}
+logger = logging.getLogger(__name__)
+
 
 class BenchmarkConfig:
     """
-    Configuration manager for benchmark suite.
+    Configuration manager for benchmark execution.
     
-    Provides methods for loading, validating, and accessing configuration.
+    This class handles loading, validating, and providing access to
+    benchmark configuration parameters.
     """
     
-    def __init__(self, config_data: Optional[Dict[str, Any]] = None):
+    def __init__(self, config_data: Optional[Dict[str, Any]] = None, 
+                config_path: Optional[str] = None):
         """
         Initialize benchmark configuration.
         
         Args:
-            config_data: Configuration data (optional)
+            config_data: Configuration dictionary (if provided directly)
+            config_path: Path to configuration file (JSON or YAML)
         """
-        # Initialize with default schema
-        self.config = self._get_default_config()
+        self._config = {}
+        self._validated = False
         
-        # Apply environment variables
-        self._apply_environment_variables()
-        
-        # Apply provided config data
         if config_data:
-            self._merge_config(config_data)
+            self._config = config_data
+        elif config_path:
+            self._load_from_file(config_path)
+        else:
+            self._load_default_config()
+            
+        # Validate the configuration
+        self.validate()
+        
+        logger.debug("BenchmarkConfig initialized")
     
-    @safe_operation("config")
-    def load_from_file(self, file_path: str) -> None:
+    def _load_from_file(self, config_path: str) -> None:
         """
         Load configuration from file.
         
         Args:
-            file_path: Path to configuration file (JSON or YAML)
+            config_path: Path to configuration file
             
         Raises:
-            BenchmarkConfigError: If loading fails
+            ConfigurationError: If file cannot be loaded
         """
-        if not os.path.exists(file_path):
-            raise BenchmarkConfigError(f"Configuration file not found: {file_path}")
+        # Delayed import to avoid circular dependency
+        from benchmark_suite.config import load_config_file
         
         try:
-            # Determine file type
-            if file_path.endswith(('.yaml', '.yml')):
-                with open(file_path, 'r') as f:
-                    config_data = yaml.safe_load(f)
-            else:
-                with open(file_path, 'r') as f:
-                    config_data = json.load(f)
-            
-            # Apply loaded config
-            self._merge_config(config_data)
-            
-            logger.info(f"Loaded configuration from {file_path}")
-            
-        except (json.JSONDecodeError, yaml.YAMLError) as e:
-            raise BenchmarkConfigError(f"Failed to parse configuration file: {str(e)}")
+            self._config = load_config_file(config_path)
+            logger.info(f"Loaded configuration from {config_path}")
         except Exception as e:
-            raise BenchmarkConfigError(f"Failed to load configuration: {str(e)}")
+            raise ConfigurationError(f"Failed to load configuration from {config_path}: {str(e)}")
     
-    def get(self, key: str, default: Any = None) -> Any:
+    def _load_default_config(self) -> None:
         """
-        Get configuration value by key.
+        Load default configuration.
+        
+        Raises:
+            ConfigurationError: If default configuration cannot be loaded
+        """
+        # Delayed import to avoid circular dependency
+        from benchmark_suite.config import load_config
+        
+        try:
+            self._config = load_config(None)  # None triggers default config
+            logger.info("Loaded default configuration")
+        except Exception as e:
+            raise ConfigurationError(f"Failed to load default configuration: {str(e)}")
+    
+    def validate(self) -> bool:
+        """
+        Validate the configuration.
+        
+        Returns:
+            True if configuration is valid
+            
+        Raises:
+            ConfigurationError: If configuration is invalid
+        """
+        # Delayed import to avoid circular dependency
+        from benchmark_suite.config import load_schema, validate_config
+        
+        try:
+            schema = load_schema()
+            validate_config(self._config, schema)
+            self._validated = True
+            return True
+        except Exception as e:
+            raise ConfigurationError(f"Configuration validation failed: {str(e)}")
+    
+    def get(self, path: str, default: Any = None) -> Any:
+        """
+        Get configuration value using dot notation path.
         
         Args:
-            key: Configuration key (dot-separated path)
-            default: Default value if key not found
+            path: Dot notation path (e.g., "benchmark_suite.core.safety.enabled")
+            default: Default value if path not found
             
         Returns:
-            Configuration value
+            Configuration value or default
         """
-        # Split key into path components
-        path = key.split('.')
+        # Delayed import to avoid circular dependency
+        from benchmark_suite.config import get_config_value
         
-        # Start at the root of the config
-        value = self.config
-        
-        # Traverse path
-        for component in path:
-            if isinstance(value, dict) and component in value:
-                value = value[component]
-            else:
-                return default
-        
-        return value
+        return get_config_value(self._config, path, default)
     
-    def set(self, key: str, value: Any) -> None:
+    def get_tier_config(self, tier_name: str) -> Dict[str, Any]:
         """
-        Set configuration value.
+        Get configuration for a specific storage tier.
         
         Args:
-            key: Configuration key (dot-separated path)
-            value: Configuration value
+            tier_name: Name of the tier
+            
+        Returns:
+            Dictionary with tier configuration
+            
+        Raises:
+            ConfigurationError: If tier not found
         """
-        # Split key into path components
-        path = key.split('.')
+        tiers = self.get("benchmark_suite.tiers.tier_definitions", [])
         
-        # Start at the root of the config
-        config = self.config
-        
-        # Traverse path
-        for i, component in enumerate(path):
-            # If we're at the last component, set the value
-            if i == len(path) - 1:
-                config[component] = value
-            else:
-                # Create nested dictionaries if they don't exist
-                if component not in config or not isinstance(config[component], dict):
-                    config[component] = {}
+        for tier in tiers:
+            if tier.get("name") == tier_name:
+                return tier
                 
-                config = config[component]
+        raise ConfigurationError(f"Storage tier not found: {tier_name}")
     
-    def to_dict(self) -> Dict[str, Any]:
+    def get_profile_config(self, profile_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Convert configuration to dictionary.
-        
-        Returns:
-            Dictionary representation of configuration
-        """
-        return self.config.copy()
-    
-    def _get_default_config(self) -> Dict[str, Any]:
-        """
-        Get default configuration.
-        
-        Returns:
-            Default configuration dictionary
-        """
-        return CONFIG_SCHEMA.copy()
-    
-    def _merge_config(self, config_data: Dict[str, Any]) -> None:
-        """
-        Merge configuration data.
+        Get configuration for a benchmark profile.
         
         Args:
-            config_data: Configuration data to merge
+            profile_name: Name of the profile (if None, use default)
+            
+        Returns:
+            Dictionary with profile configuration
+            
+        Raises:
+            ConfigurationError: If profile not found
         """
-        # Recursively merge dictionaries
-        def merge_dict(target, source):
-            for key, value in source.items():
-                if key in target and isinstance(target[key], dict) and isinstance(value, dict):
-                    merge_dict(target[key], value)
-                else:
-                    target[key] = value
+        if profile_name is None:
+            profile_name = self.get("benchmark_suite.execution.default_profile", "quick_scan")
+            
+        profiles = self.get("benchmark_suite.benchmark_profiles", {})
         
-        # Clone config data to avoid modifying the input
-        data = json.loads(json.dumps(config_data))
-        
-        # Merge into current config
-        merge_dict(self.config, data)
-    
-    def _apply_environment_variables(self) -> None:
-        """Apply configuration from environment variables."""
-        # Look for environment variables with prefix BENCHMARK_
-        for key, value in os.environ.items():
-            if key.startswith('BENCHMARK_'):
-                # Convert environment variable name to config key
-                config_key = key[10:].lower().replace('__', '.')
+        if profile_name in profiles:
+            return profiles[profile_name]
                 
-                # Try to parse value as JSON
-                try:
-                    parsed_value = json.loads(value)
-                except json.JSONDecodeError:
-                    # Use string value if not valid JSON
-                    parsed_value = value
-                
-                # Set config value
-                self.set(config_key, parsed_value)
+        raise ConfigurationError(f"Benchmark profile not found: {profile_name}")
     
-    def validate(self) -> List[str]:
+    def get_safety_config(self, profile_name: Optional[str] = None) -> Dict[str, Any]:
         """
-        Validate configuration.
+        Get safety configuration, with profile-specific overrides if available.
+        
+        Args:
+            profile_name: Name of the profile (if None, use default)
+            
+        Returns:
+            Dictionary with safety configuration
+        """
+        # Get base safety config
+        safety_config = self.get("benchmark_suite.core.safety", {})
+        
+        # Apply profile-specific overrides if available
+        if profile_name is not None:
+            try:
+                profile_config = self.get_profile_config(profile_name)
+                profile_safety = profile_config.get("safety", {})
+                
+                # Update with profile-specific safety settings
+                if profile_safety:
+                    safety_config.update(profile_safety)
+                    
+            except ConfigurationError:
+                # If profile not found, just use base safety config
+                pass
+                
+        return safety_config
+    
+    def get_all_tier_names(self) -> List[str]:
+        """
+        Get list of all configured tier names.
         
         Returns:
-            List of validation errors, or empty list if valid
+            List of tier names
         """
-        errors = []
+        tiers = self.get("benchmark_suite.tiers.tier_definitions", [])
+        return [tier.get("name") for tier in tiers if "name" in tier]
+    
+    def get_all_profile_names(self) -> List[str]:
+        """
+        Get list of all configured profile names.
         
-        # Check required paths
-        for path in ["tdiobench.core.safety.enabled"]:
-            if self.get(path) is None:
-                errors.append(f"Missing required configuration: {path}")
+        Returns:
+            List of profile names
+        """
+        profiles = self.get("benchmark_suite.benchmark_profiles", {})
+        return list(profiles.keys())
+    
+    def get_engine_config(self) -> Dict[str, Any]:
+        """
+        Get engine configuration.
         
-        # Check value types
-        type_checks = [
-            ("tdiobench.core.safety.max_cpu_percent", int),
-            ("tdiobench.core.safety.max_memory_percent", int),
-            ("tdiobench.collection.time_series.interval", (int, float)),
-            ("tdiobench.collection.system_metrics.interval", (int, float)),
-            ("tdiobench.analysis.statistics.confidence_level", (int, float)),
-            ("tdiobench.analysis.anomaly_detection.threshold", (int, float))
-        ]
+        Returns:
+            Dictionary with engine configuration
+        """
+        return self.get("benchmark_suite.execution", {})
+    
+    def get_analysis_config(self) -> Dict[str, Any]:
+        """
+        Get analysis configuration.
         
-        for path, expected_type in type_checks:
-            value = self.get(path)
-            if value is not None and not isinstance(value, expected_type):
-                errors.append(f"Invalid type for {path}: expected {expected_type}, got {type(value)}")
+        Returns:
+            Dictionary with analysis configuration
+        """
+        return self.get("benchmark_suite.analysis", {})
+    
+    def get_visualization_config(self) -> Dict[str, Any]:
+        """
+        Get visualization configuration.
         
-        # Check value ranges
-        range_checks = [
-            ("tdiobench.core.safety.max_cpu_percent", 0, 100),
-            ("tdiobench.core.safety.max_memory_percent", 0, 100),
-            ("tdiobench.collection.time_series.interval", 0.01, None),
-            ("tdiobench.collection.system_metrics.interval", 0.1, None),
-            ("tdiobench.analysis.statistics.confidence_level", 0, 100)
-        ]
+        Returns:
+            Dictionary with visualization configuration
+        """
+        return self.get("benchmark_suite.visualization", {})
+    
+    def create_engine(self) -> 'BaseEngine':
+        """
+        Create and configure benchmark engine based on configuration.
         
-        for path, min_value, max_value in range_checks:
-            value = self.get(path)
-            if value is not None:
-                if min_value is not None and value < min_value:
-                    errors.append(f"Value for {path} too low: {value} < {min_value}")
-                if max_value is not None and value > max_value:
-                    errors.append(f"Value for {path} too high: {value} > {max_value}")
+        Returns:
+            Configured engine instance
+            
+        Raises:
+            ConfigurationError: If engine cannot be created
+        """
+        # Delayed import to avoid circular dependency
+        from benchmark_suite.engines.fio_engine import FIOEngine
         
-        return errors
+        engine_type = self.get("benchmark_suite.execution.engine", "fio")
+        
+        if engine_type.lower() == "fio":
+            engine_path = self.get("benchmark_suite.execution.engine_path", "/usr/bin/fio")
+            return FIOEngine(self, engine_path)
+        else:
+            raise ConfigurationError(f"Unsupported engine type: {engine_type}")
+    
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        Get complete configuration as dictionary.
+        
+        Returns:
+            Configuration dictionary
+        """
+        return self._config.copy()
+    
+    def __str__(self) -> str:
+        """String representation of the configuration."""
+        return f"BenchmarkConfig(validated={self._validated}, tiers={len(self.get_all_tier_names())})"
+    
+    def __repr__(self) -> str:
+        """Detailed representation of the configuration."""
+        return (f"BenchmarkConfig(validated={self._validated}, "
+                f"tiers={self.get_all_tier_names()}, "
+                f"profiles={self.get_all_profile_names()})")
+
+# Functions that don't depend on class definition can go here
+def create_benchmark_config(config_path: Optional[str] = None) -> BenchmarkConfig:
+    """
+    Create a new BenchmarkConfig instance.
+    
+    Args:
+        config_path: Optional path to configuration file
+        
+    Returns:
+        Configured BenchmarkConfig instance
+    """
+    return BenchmarkConfig(config_path=config_path)
