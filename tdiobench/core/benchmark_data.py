@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Benchmark data module for storage benchmark suite (Tiered Storage I/O Benchmark).
+Benchmark data module for storage benchmark suite.
 
 This module provides classes to represent, store, and process benchmark data
 collected during benchmark execution. It enables flexible data manipulation,
@@ -22,9 +22,219 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
-from tdiobench.core.exceptions import DataValidationError
+from benchmark_suite.core.exceptions import DataValidationError
 
 logger = logging.getLogger(__name__)
+
+
+class BenchmarkResult:
+    """
+    Container for results from a single benchmark run.
+    
+    This class stores metrics and metadata from an individual benchmark run,
+    providing methods to access, analyze, and format the results.
+    """
+    
+    def __init__(self, run_id: str, tier_name: str, profile_name: str, 
+                 start_time: Optional[Union[str, datetime]] = None,
+                 end_time: Optional[Union[str, datetime]] = None,
+                 metrics: Optional[Dict[str, Any]] = None,
+                 parameters: Optional[Dict[str, Any]] = None,
+                 raw_data: Optional[Dict[str, Any]] = None):
+        """
+        Initialize a new BenchmarkResult instance.
+        
+        Args:
+            run_id: Unique identifier for this benchmark run
+            tier_name: Name of the storage tier
+            profile_name: Name of the benchmark profile used
+            start_time: Benchmark start time
+            end_time: Benchmark end time
+            metrics: Dictionary of result metrics (throughput, IOPS, etc.)
+            parameters: Dictionary of benchmark parameters
+            raw_data: Raw output data from the benchmark engine
+        """
+        self.run_id = run_id
+        self.tier_name = tier_name
+        self.profile_name = profile_name
+        
+        # Set timestamps
+        self.start_time = start_time
+        if self.start_time is None:
+            self.start_time = datetime.utcnow().isoformat()
+        elif isinstance(self.start_time, datetime):
+            self.start_time = self.start_time.isoformat()
+            
+        self.end_time = end_time
+        if self.end_time is None:
+            self.end_time = datetime.utcnow().isoformat()
+        elif isinstance(self.end_time, datetime):
+            self.end_time = self.end_time.isoformat()
+        
+        # Store metrics and parameters
+        self.metrics = metrics or {}
+        self.parameters = parameters or {}
+        self.raw_data = raw_data or {}
+        
+        # Calculate duration
+        try:
+            start_dt = pd.to_datetime(self.start_time)
+            end_dt = pd.to_datetime(self.end_time)
+            self.duration_seconds = (end_dt - start_dt).total_seconds()
+        except:
+            self.duration_seconds = None
+            
+        logger.debug(f"Created BenchmarkResult for run {run_id} on tier {tier_name}")
+    
+    @property
+    def throughput(self) -> Optional[float]:
+        """Get the throughput value in MB/s."""
+        return self.metrics.get("throughput_MBps")
+    
+    @property
+    def iops(self) -> Optional[float]:
+        """Get the IOPS value."""
+        return self.metrics.get("iops")
+    
+    @property
+    def latency(self) -> Optional[float]:
+        """Get the latency value in milliseconds."""
+        return self.metrics.get("latency_ms")
+    
+    def get_metric(self, name: str, default: Any = None) -> Any:
+        """
+        Get a specific metric value.
+        
+        Args:
+            name: Metric name
+            default: Default value if metric not found
+            
+        Returns:
+            Metric value or default
+        """
+        return self.metrics.get(name, default)
+    
+    def get_parameter(self, name: str, default: Any = None) -> Any:
+        """
+        Get a specific parameter value.
+        
+        Args:
+            name: Parameter name
+            default: Default value if parameter not found
+            
+        Returns:
+            Parameter value or default
+        """
+        return self.parameters.get(name, default)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert result to a dictionary.
+        
+        Returns:
+            Dictionary representation of the result
+        """
+        return {
+            "run_id": self.run_id,
+            "tier_name": self.tier_name,
+            "profile_name": self.profile_name,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration_seconds": self.duration_seconds,
+            "metrics": self.metrics,
+            "parameters": self.parameters
+        }
+    
+    def to_series(self) -> pd.Series:
+        """
+        Convert result to a pandas Series.
+        
+        Returns:
+            Series representation of the result
+        """
+        data = self.to_dict()
+        # Flatten metrics and parameters
+        for k, v in self.metrics.items():
+            data[f"metric_{k}"] = v
+        for k, v in self.parameters.items():
+            data[f"param_{k}"] = v
+        # Remove nested dictionaries
+        del data["metrics"]
+        del data["parameters"]
+        return pd.Series(data)
+    
+    def to_row(self) -> Dict[str, Any]:
+        """
+        Convert result to a flattened row format suitable for DataFrames.
+        
+        Returns:
+            Flattened dictionary
+        """
+        row = {
+            "run_id": self.run_id,
+            "tier_name": self.tier_name,
+            "profile_name": self.profile_name,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration_seconds": self.duration_seconds
+        }
+        
+        # Add metrics with metric_ prefix
+        for k, v in self.metrics.items():
+            row[f"metric_{k}"] = v
+            
+        # Add parameters with param_ prefix
+        for k, v in self.parameters.items():
+            row[f"param_{k}"] = v
+            
+        return row
+    
+    def merge_raw_data(self, raw_data: Dict[str, Any]) -> None:
+        """
+        Merge additional raw data into the result.
+        
+        Args:
+            raw_data: Raw data to merge
+        """
+        self.raw_data.update(raw_data)
+    
+    def update_metrics(self, metrics: Dict[str, Any]) -> None:
+        """
+        Update metrics with new values.
+        
+        Args:
+            metrics: Metrics to update
+        """
+        self.metrics.update(metrics)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BenchmarkResult':
+        """
+        Create a BenchmarkResult from a dictionary.
+        
+        Args:
+            data: Dictionary with result data
+            
+        Returns:
+            New BenchmarkResult instance
+        """
+        return cls(
+            run_id=data.get("run_id", str(uuid.uuid4())),
+            tier_name=data.get("tier_name", "unknown"),
+            profile_name=data.get("profile_name", "unknown"),
+            start_time=data.get("start_time"),
+            end_time=data.get("end_time"),
+            metrics=data.get("metrics", {}),
+            parameters=data.get("parameters", {}),
+            raw_data=data.get("raw_data", {})
+        )
+    
+    def __str__(self) -> str:
+        """String representation of the benchmark result."""
+        metrics_str = ", ".join([f"{k}={v}" for k, v in self.metrics.items() 
+                                if k in ["throughput_MBps", "iops", "latency_ms"]])
+        return (f"BenchmarkResult(run_id={self.run_id}, tier={self.tier_name}, "
+                f"profile={self.profile_name}, {metrics_str})")
 
 
 class BenchmarkData:
@@ -143,6 +353,64 @@ class BenchmarkData:
             
         self._data["runs"][run_id] = run_data
         logger.debug(f"Added benchmark run: {run_id}")
+    
+    def add_benchmark_result(self, result: BenchmarkResult) -> None:
+        """
+        Add a benchmark result to the data.
+        
+        Args:
+            result: BenchmarkResult instance
+        """
+        if "runs" not in self._data:
+            self._data["runs"] = {}
+            
+        self._data["runs"][result.run_id] = result.to_dict()
+        logger.debug(f"Added benchmark result: {result.run_id}")
+    
+    def get_benchmark_results(self) -> List[BenchmarkResult]:
+        """
+        Get all benchmark results.
+        
+        Returns:
+            List of BenchmarkResult instances
+        """
+        if "runs" not in self._data:
+            return []
+            
+        results = []
+        for run_id, run_data in self._data["runs"].items():
+            results.append(BenchmarkResult.from_dict(run_data))
+            
+        return results
+    
+    def get_benchmark_result(self, run_id: str) -> Optional[BenchmarkResult]:
+        """
+        Get a specific benchmark result by run ID.
+        
+        Args:
+            run_id: Run identifier
+            
+        Returns:
+            BenchmarkResult instance if found, otherwise None
+        """
+        if "runs" not in self._data or run_id not in self._data["runs"]:
+            return None
+            
+        return BenchmarkResult.from_dict(self._data["runs"][run_id])
+    
+    def to_dataframe(self) -> pd.DataFrame:
+        """
+        Convert all benchmark results to a pandas DataFrame.
+        
+        Returns:
+            DataFrame with benchmark results
+        """
+        results = self.get_benchmark_results()
+        if not results:
+            return pd.DataFrame()
+            
+        rows = [result.to_row() for result in results]
+        return pd.DataFrame(rows)
     
     def add_engine_result(self, engine: str, operation: str, result: Dict[str, Any]) -> None:
         """
@@ -578,13 +846,23 @@ class BenchmarkData:
                     continue
                 merged.add_engine_result(engine, op, results)
         
+        # Merge benchmark results
+        for result in self.get_benchmark_results():
+            merged.add_benchmark_result(result)
+            
+        for result in other.get_benchmark_results():
+            # Skip if already added from self
+            if "runs" in self._data and result.run_id in self._data["runs"]:
+                continue
+            merged.add_benchmark_result(result)
+        
         # Merge other data
         for key, value in self._data.items():
-            if key not in ["time_series", "engine_results"]:
+            if key not in ["time_series", "engine_results", "runs"]:
                 merged.add_data(key, value)
         
         for key, value in other._data.items():
-            if key not in ["time_series", "engine_results"]:
+            if key not in ["time_series", "engine_results", "runs"]:
                 # Skip if already added from self
                 if key in self._data:
                     continue
@@ -646,6 +924,20 @@ class BenchmarkData:
                         messages.append(f"Operations for engine {engine} must be a dictionary")
                         is_valid = False
                         break
+        
+        # Validate benchmark runs if present
+        if "runs" in self._data:
+            if not isinstance(self._data["runs"], dict):
+                messages.append("Benchmark runs must be a dictionary")
+                is_valid = False
+            else:
+                for run_id, run_data in self._data["runs"].items():
+                    if not isinstance(run_data, dict):
+                        messages.append(f"Run data for {run_id} must be a dictionary")
+                        is_valid = False
+                    elif "metrics" not in run_data:
+                        messages.append(f"Run data for {run_id} missing required 'metrics' field")
+                        is_valid = False
         
         return is_valid, messages
     
