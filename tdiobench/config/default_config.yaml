@@ -1,0 +1,193 @@
+benchmark_suite:
+  metadata:
+    created_by: "Jack Ogaja"
+    created_at: "2025-06-26"
+    description: "Default configuration for Enhanced Tiered Storage I/O Benchmark Suite"
+    version: "1.0.0"
+  
+  core:
+    safety:
+      enabled: true
+      max_cpu_percent: 70
+      max_memory_percent: 80
+      throttle_step_percent: 10
+      abort_threshold_cpu_percent: 90
+      abort_threshold_memory_percent: 95
+      monitoring_interval_seconds: 2
+      progressive_load: true
+      progressive_load_steps: 3
+    
+    output:
+      base_directory: "./benchmark_results"
+      create_timestamp_subdirectory: true
+      retain_raw_data: true
+      data_retention_days: 30
+      compress_old_results: true
+    
+    logging:
+      level: "INFO"
+      log_to_file: true
+      log_directory: "./logs"
+      rotation_size_mb: 10
+      retention_count: 5
+  
+  tiers:
+    tier_definitions:
+      - name: "nvme_tier"
+        path: "/mnt/nvme"
+        type: "nvme"
+        description: "NVMe storage tier"
+        expected_min_throughput_MBps: 2000
+        expected_min_iops: 400000
+        expected_max_latency_ms: 0.5
+      
+      - name: "ssd_tier"
+        path: "/mnt/ssd"
+        type: "ssd"
+        description: "SSD storage tier"
+        expected_min_throughput_MBps: 500
+        expected_min_iops: 100000
+        expected_max_latency_ms: 2
+      
+      - name: "hdd_tier"
+        path: "/mnt/hdd"
+        type: "hdd"
+        description: "HDD storage tier"
+        expected_min_throughput_MBps: 100
+        expected_min_iops: 200
+        expected_max_latency_ms: 20
+      
+      - name: "lustre_tier"
+        path: "/mnt/lustre"
+        type: "parallel_fs"
+        description: "Lustre parallel filesystem"
+        expected_min_throughput_MBps: 1000
+        expected_min_iops: 50000
+        expected_max_latency_ms: 5
+        parallel_file_per_process: true
+        stripe_count: 4
+        stripe_size: "1m"
+    
+    auto_detect: true
+    default_tier: "nvme_tier"
+  
+  benchmark_profiles:
+    quick_scan:
+      description: "Fast overview of performance"
+      duration_seconds: 30
+      block_sizes: ["4k", "1m"]
+      patterns: ["read", "write"]
+      io_depth: 32
+      direct: true
+      safety:
+        max_cpu_percent: 60
+    
+    comprehensive:
+      description: "Detailed performance analysis"
+      duration_seconds: 120
+      block_sizes: ["4k", "8k", "16k", "32k", "64k", "128k", "256k", "512k", "1m", "4m"]
+      patterns: ["read", "write", "randread", "randwrite", "randrw"]
+      io_depth: 64
+      direct: true
+      numjobs: 4
+    
+    production_safe:
+      description: "Low-impact benchmark for production environments"
+      duration_seconds: 60
+      block_sizes: ["4k", "64k", "1m"]
+      patterns: ["read", "randread"]
+      io_depth: 16
+      direct: true
+      safety:
+        max_cpu_percent: 30
+        throttle_step_percent: 5
+    
+    metadata_heavy:
+      description: "Profile for metadata-intensive workloads"
+      duration_seconds: 60
+      block_sizes: ["4k"]
+      patterns: ["randread", "randwrite"]
+      io_depth: 1
+      direct: false
+      create_files: true
+      file_count: 10000
+      file_size: "4k"
+    
+    streaming:
+      description: "Profile for streaming workloads"
+      duration_seconds: 90
+      block_sizes: ["1m", "4m", "8m"]
+      patterns: ["read", "write"]
+      io_depth: 8
+      direct: true
+  
+  execution:
+    engine: "fio"
+    engine_path: "/usr/bin/fio"
+    parallel_tier_testing: false
+    cooldown_seconds: 30
+    pre_benchmark_sync: true
+    drop_caches: true
+    default_profile: "quick_scan"
+  
+  analysis:
+    statistical:
+      enabled: true
+      percentiles: [1, 5, 50, 95, 99, 99.9]
+      detect_outliers: true
+      outlier_method: "zscore"
+      outlier_threshold: 3.0
+    
+    time_series:
+      enabled: true
+      trend_analysis: true
+      seasonality_detection: true
+      smoothing_window: 5
+    
+    anomaly_detection:
+      enabled: true
+      method: "isolation_forest"
+      threshold: 2.5
+      min_data_points: 20
+      contextual:
+        enabled: true
+        window_size: 10
+      forecasting:
+        enabled: false
+        model: "arima"
+    
+    network:
+      enabled: true
+      detect_protocol: true
+      packet_capture: false
+      interface_monitoring: true
+      thresholds:
+        utilization_percent: 80
+        retransmit_percent: 2
+        latency_ms: 10
+      correlation_threshold: 0.7
+    
+    comparative:
+      enabled: true
+      baseline_path: null
+      significance_threshold: 0.05
+      min_performance_difference_percent: 5
+  
+  visualization:
+    charts:
+      enabled: true
+      types: ["bar", "line", "scatter", "heatmap"]
+      output_dir: "./charts"
+      format: "html"
+      width: 900
+      height: 500
+      interactive: true
+      theme: "default"
+    
+    reports:
+      enabled: true
+      formats: ["html", "markdown", "json"]
+      output_dir: "./reports"
+      include_charts: true
+      include_recommendations: true
+      template_dir: null
