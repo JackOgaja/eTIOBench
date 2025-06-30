@@ -329,9 +329,6 @@ If you use this benchmark suite in your research or publications, please cite:
 
 - **FIO Team**: Built using [FIO (Flexible I/O Tester)](https://github.com/axboe/fio)
 - **Python Community**: Analysis tools powered by Python scientific stack
-- **SLURM Developers**: For the robust cluster workload manager
-- **Storage Community**: For feedback and feature requests
-- **Contributors**: Everyone who has contributed to this project
 
 ---
 
