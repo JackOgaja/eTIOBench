@@ -34,7 +34,7 @@ CONFIG_SCHEMA = {
                 "file": None
             }
         },
-        "data": {
+        "collection": {
             "time_series": {
                 "enabled": True,
                 "interval": 1.0,
@@ -314,8 +314,8 @@ class BenchmarkConfig:
         type_checks = [
             ("tdiobench.core.safety.max_cpu_percent", int),
             ("tdiobench.core.safety.max_memory_percent", int),
-            ("tdiobench.data.time_series.interval", (int, float)),
-            ("tdiobench.data.system_metrics.interval", (int, float)),
+            ("tdiobench.collection.time_series.interval", (int, float)),
+            ("tdiobench.collection.system_metrics.interval", (int, float)),
             ("tdiobench.analysis.statistics.confidence_level", (int, float)),
             ("tdiobench.analysis.anomaly_detection.threshold", (int, float))
         ]
@@ -329,8 +329,8 @@ class BenchmarkConfig:
         range_checks = [
             ("tdiobench.core.safety.max_cpu_percent", 0, 100),
             ("tdiobench.core.safety.max_memory_percent", 0, 100),
-            ("tdiobench.data.time_series.interval", 0.01, None),
-            ("tdiobench.data.system_metrics.interval", 0.1, None),
+            ("tdiobench.collection.time_series.interval", 0.01, None),
+            ("tdiobench.collection.system_metrics.interval", 0.1, None),
             ("tdiobench.analysis.statistics.confidence_level", 0, 100)
         ]
         
