@@ -1,0 +1,84 @@
+benchmark_suite:
+  metadata:
+    created_by: "Jack Ogaja"
+    created_at: "2025-06-26"
+    description: "Lustre parallel filesystem benchmark configuration"
+    version: "1.0.0"
+  
+  core:
+    safety:
+      enabled: true
+      max_cpu_percent: 70
+      max_memory_percent: 80
+    
+    output:
+      base_directory: "./lustre_benchmark_results"
+  
+  tiers:
+    tier_definitions:
+      - name: "lustre_tier"
+        path: "/mnt/lustre"
+        type: "parallel_fs"
+        description: "Lustre parallel filesystem"
+        expected_min_throughput_MBps: 2000
+        expected_min_iops: 80000
+        expected_max_latency_ms: 3
+        parallel_file_per_process: true
+        stripe_count: 4
+        stripe_size: "1m"
+    
+    default_tier: "lustre_tier"
+  
+  benchmark_profiles:
+    lustre_streaming:
+      description: "Streaming I/O for Lustre"
+      duration_seconds: 180
+      block_sizes: ["1m", "4m", "8m"]
+      patterns: ["read", "write"]
+      io_depth: 16
+      direct: true
+      numjobs: 8
+    
+    lustre_metadata:
+      description: "Metadata operations for Lustre"
+      duration_seconds: 120
+      block_sizes: ["4k"]
+      patterns: ["randread", "randwrite"]
+      io_depth: 1
+      direct: false
+      create_files: true
+      file_count: 50000
+      file_size: "4k"
+    
+    lustre_mixed:
+      description: "Mixed workload for Lustre"
+      duration_seconds: 240
+      block_sizes: ["64k", "1m"]
+      patterns: ["randrw"]
+      rwmixread: 70
+      io_depth: 32
+      direct: true
+      numjobs: 4
+  
+  execution:
+    engine: "fio"
+    cooldown_seconds: 60
+    default_profile: "lustre_streaming"
+  
+  analysis:
+    network:
+      enabled: true
+      interface_monitoring: true
+    
+    time_series:
+      enabled: true
+      trend_analysis: true
+  
+  visualization:
+    charts:
+      types: ["bar", "line"]
+      interactive: true
+    
+    reports:
+      formats: ["html", "markdown"]
+      include_recommendations: true
