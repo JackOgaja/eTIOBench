@@ -28,7 +28,7 @@ import plotly.io as pio
 from pathlib import Path
 
 from tdiobench.core.benchmark_data import BenchmarkData
-from tdiobench.core.exceptions import VisualizationError
+from tdiobench.core.benchmark_exceptions import VisualizationError
 
 logger = logging.getLogger(__name__)
 
@@ -1636,77 +1636,141 @@ class ChartGenerator:
             
         return fig
     
-    def generate_chart_dashboard(self, benchmark_data: BenchmarkData,
-                               metrics: List[str],
-                               output_path: str) -> None:
+    def generate_chart_dashboard(self, data: BenchmarkData, 
+                           chart_configs: List[Dict[str, Any]],
+                           title: Optional[str] = "Benchmark Results Dashboard",
+                           figsize: Tuple[int, int] = (16, 10),
+                           layout: Optional[Tuple[int, int]] = None,
+                           output_path: Optional[str] = None,
+                           output_format: str = "png",
+                           dpi: int = 300,
+                           show: bool = False) -> plt.Figure:
         """
-        Generate a dashboard with multiple charts.
-        
+        Generate a dashboard with multiple charts arranged in a grid.
+    
         Args:
-            benchmark_data: BenchmarkData instance
-            metrics: List of metrics to visualize
+            data: BenchmarkData instance to visualize
+            chart_configs: List of chart configuration dictionaries
+            title: Dashboard title
+            figsize: Figure size (width, height) in inches
+            layout: Grid layout (rows, cols), auto-calculated if None
             output_path: Path to save the dashboard
-        """
-        if not self.enabled:
-            logger.info("Chart generation is disabled in config")
-            return
-            
-        if not self.interactive:
-            logger.warning("Dashboard generation requires interactive mode")
-            return
+            output_format: Output file format (png, pdf, svg, etc.)
+            dpi: Resolution for raster formats
+            show: Whether to display the dashboard
         
-        try:
-            # Ensure output directory exists
-            output_dir = os.path.dirname(output_path)
-            if output_dir:
-                os.makedirs(output_dir, exist_ok=True)
+        Returns:
+            Matplotlib Figure with the dashboard
+        """
+        if not chart_configs:
+            raise ValueError("No chart configurations provided")
+    
+        # Determine grid layout if not specified
+        if layout is None:
+            n_charts = len(chart_configs)
+            # Calculate a reasonable grid layout based on number of charts
+            if n_charts <= 2:
+                layout = (1, n_charts)
+            elif n_charts <= 4:
+                layout = (2, 2)
+            elif n_charts <= 6:
+                layout = (2, 3)
+            elif n_charts <= 9:
+                layout = (3, 3)
+            elif n_charts <= 12:
+                layout = (3, 4)
+            else:
+                # For many charts, use a more compact layout
+                n_cols = min(4, int(np.ceil(np.sqrt(n_charts))))
+                n_rows = int(np.ceil(n_charts / n_cols))
+                layout = (n_rows, n_cols)
+    
+        n_rows, n_cols = layout
+    
+        # Create figure and gridspec
+        fig = plt.figure(figsize=figsize, constrained_layout=True)
+        gs = fig.add_gridspec(n_rows + 1, n_cols)  # +1 for title
+    
+        # Add dashboard title
+        if title:
+            title_ax = fig.add_subplot(gs[0, :])
+            title_ax.set_title(title, fontsize=16, fontweight='bold')
+            title_ax.axis('off')
+    
+        # Generate charts and add to grid
+        for i, config in enumerate(chart_configs):
+            if i >= n_rows * n_cols:
+                logger.warning(f"Dashboard layout ({n_rows}x{n_cols}) cannot accommodate all {len(chart_configs)} charts")
+                break
             
-            # Get time series data
-            df = benchmark_data.get_time_series(reset_index=True)
+            # Calculate grid position (skip first row if title is present)
+            row_offset = 1 if title else 0
+            row = (i // n_cols) + row_offset
+            col = i % n_cols
+        
+            # Create subplot
+            ax = fig.add_subplot(gs[row, col])
+        
+            try:
+                # Extract chart type and parameters
+                chart_type = config.get("type", "line")
+                chart_params = config.get("params", {})
             
-            if df.empty:
-                logger.warning("No time series data available for dashboard")
-                return
-            
-            # Filter to existing metrics
-            available_metrics = [m for m in metrics if m in df.columns]
-            
-            if not available_metrics:
-                logger.warning("None of the specified metrics found in data")
-                return
-            
-            # Create subplot grid
-            n_metrics = len(available_metrics)
-            n_rows = (n_metrics + 1) // 2  # Number of rows needed (2 charts per row)
-            
-            # Create figure with subplots
-            fig = make_subplots(
-                rows=n_rows,
-                cols=2,
-                subplot_titles=available_metrics,
-                vertical_spacing=0.1
-            )
-            
-            # Add time series for each metric
-            for i, metric in enumerate(available_metrics):
-                row = i // 2 + 1
-                col = i % 2 + 1
+                # Generate specific chart type
+                if chart_type == "line":
+                    self._generate_line_chart(data, ax=ax, **chart_params)
+                elif chart_type == "bar":
+                    self._generate_bar_chart(data, ax=ax, **chart_params)
+                elif chart_type == "scatter":
+                    self._generate_scatter_chart(data, ax=ax, **chart_params)
+                elif chart_type == "histogram":
+                    self._generate_histogram_chart(data, ax=ax, **chart_params)
+                elif chart_type == "heatmap":
+                    self._generate_heatmap_chart(data, ax=ax, **chart_params)
+                elif chart_type == "box":
+                    self._generate_box_chart(data, ax=ax, **chart_params)
+                elif chart_type == "violin":
+                    self._generate_violin_chart(data, ax=ax, **chart_params)
+                elif chart_type == "pie":
+                    self._generate_pie_chart(data, ax=ax, **chart_params)
+                elif chart_type == "area":
+                    self._generate_area_chart(data, ax=ax, **chart_params)
+                elif chart_type == "radar":
+                    self._generate_radar_chart(data, ax=ax, **chart_params)
+                else:
+                    logger.warning(f"Unsupported chart type: {chart_type}")
+                    ax.text(0.5, 0.5, f"Unsupported chart type: {chart_type}",
+                            ha='center', va='center', transform=ax.transAxes)
+                    ax.axis('off')
                 
-                fig.add_trace(
-                    go.Scatter(
-                        x=df["timestamp"] if "timestamp" in df.columns else df.index,
-                        y=df[metric],
-                        mode='lines',
-                        name=metric
-                    ),
-                    row=row, col=col
-                )
+                # Add chart title if specified
+                if "title" in config:
+                    ax.set_title(config["title"])
+                
+            except Exception as e:
+                logger.error(f"Error generating chart: {str(e)}")
+                ax.text(0.5, 0.5, f"Error: {str(e)}", ha='center', va='center', 
+                       transform=ax.transAxes, color='red')
+                ax.axis('off')
+    
+        # Adjust layout
+        fig.tight_layout()
+    
+        # Save dashboard if output path is provided
+        if output_path:
+            # Ensure the output directory exists
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        
+            # Ensure correct file extension
+            if not output_path.lower().endswith(f".{output_format.lower()}"):
+                output_path = f"{output_path}.{output_format.lower()}"
             
-            # Update layout
-            fig.update_layout(
-                title=f"Benchmark Dashboard - {benchmark_data.metadata.get('id', '')}",
-                height=350 * n_rows,
-                width=self.width,
-                showlegend=False,
-                template="plotly_white" if self.theme == "default" else "plotly_dark"
-            )
+            # Save the figure
+            fig.savefig(output_path, format=output_format, dpi=dpi, bbox_inches='tight')
+            logger.info(f"Dashboard saved to {output_path}")
+    
+        # Show the dashboard if requested
+        if show:
+            plt.show()
+    
+        return fig
