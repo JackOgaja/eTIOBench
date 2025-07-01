@@ -13,6 +13,7 @@ from tdiobench.core.benchmark_suite import BenchmarkSuite, BenchmarkEvent
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkData, BenchmarkResult, TimeSeriesData
 from tdiobench.core.benchmark_analysis import AnalysisResult
+from benchmark_suite.core.benchmark_runner import BenchmarkRunner
 from tdiobench.core.benchmark_exceptions import (
     BenchmarkError, BenchmarkConfigError, BenchmarkExecutionError,
     BenchmarkResourceError, BenchmarkDataError, BenchmarkAnalysisError,
@@ -21,10 +22,15 @@ from tdiobench.core.benchmark_exceptions import (
 )
 
 __all__ = [
-    'BenchmarkSuite', 'BenchmarkEvent', 'BenchmarkConfig',
+    'BenchmarkSuite', 'BenchmarkEvent', 'BenchmarkConfig', 'BenchmarkRunner',
     'BenchmarkData', 'BenchmarkResult', 'TimeSeriesData', 'AnalysisResult',
     'BenchmarkError', 'BenchmarkConfigError', 'BenchmarkExecutionError',
     'BenchmarkResourceError', 'BenchmarkDataError', 'BenchmarkAnalysisError',
     'BenchmarkReportError', 'BenchmarkAPIError', 'BenchmarkNetworkError',
     'BenchmarkTimeoutError', 'BenchmarkAuthenticationError', 'BenchmarkStorageError'
 ]
+
+# Module initialization
+import logging
+logger = logging.getLogger(__name__)
+logger.debug(f"Benchmark Suite Core module initialized (version {__version__})")
