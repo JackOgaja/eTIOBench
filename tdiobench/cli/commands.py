@@ -7,7 +7,7 @@ This module defines a comprehensive command line interface for running benchmark
 analyzing results, generating reports, and managing configurations.
 
 Author: Jack Ogaja
-Date: 2025-06-30
+Date: 2025-06-26
 """
 
 import os
