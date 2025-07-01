@@ -17,7 +17,8 @@ import argparse
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from tdiobench.core.benchmark_runner import BenchmarkRunner
+from tdiobench.core.benchmark_suite import BenchmarkSuite
+from tdiobench.core.benchmark_runner import BenchmarkRunner # For a test run: Can be implement below in place of "BenchmarkSuite"
 from tdiobench.core.benchmark_data import BenchmarkData
 from tdiobench.analysis.base_analyzer import BaseAnalyzer
 from tdiobench.visualization.chart_generator import ChartGenerator
@@ -51,7 +52,7 @@ def run_command(args: argparse.Namespace) -> int:
     
     # Create and run benchmarks
     try:
-        runner = BenchmarkRunner(config)
+        runner = BenchmarkSuite(config)
         results = runner.run_benchmarks()
         
         # Save results if requested
@@ -153,7 +154,7 @@ def list_command(args: argparse.Namespace) -> int:
         config = load_config(args.config)
         
         # Get list of available benchmarks
-        runner = BenchmarkRunner(config)
+        runner = BenchmarkSuite(config)
         benchmarks = runner.list_available_benchmarks()
         
         # Print benchmark list
