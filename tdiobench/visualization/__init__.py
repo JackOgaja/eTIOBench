@@ -9,9 +9,7 @@ Date: 2025-06-26
 """
 
 from tdiobench.visualization.report_generator import ReportGenerator
-from tdiobench.visualization.chart_generator import (
-    TimeSeriesChartGenerator, TrendlineGenerator
-)
+from tdiobench.visualization.chart_generator import ChartGenerator
 
 __all__ = [
     'ReportGenerator', 'TimeSeriesChartGenerator', 'TrendlineGenerator'
