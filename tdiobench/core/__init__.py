@@ -13,7 +13,7 @@ from tdiobench.core.benchmark_suite import BenchmarkSuite, BenchmarkEvent
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkData, BenchmarkResult, TimeSeriesData
 from tdiobench.core.benchmark_analysis import AnalysisResult
-from benchmark_suite.core.benchmark_runner import BenchmarkRunner
+from tdiobench.core.benchmark_runner import BenchmarkRunner
 from tdiobench.core.benchmark_exceptions import (
     BenchmarkError, BenchmarkConfigError, BenchmarkExecutionError,
     BenchmarkResourceError, BenchmarkDataError, BenchmarkAnalysisError,
