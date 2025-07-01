@@ -12,5 +12,5 @@ from tdiobench.visualization.report_generator import ReportGenerator
 from tdiobench.visualization.chart_generator import ChartGenerator
 
 __all__ = [
-    'ReportGenerator', 'TimeSeriesChartGenerator', 'TrendlineGenerator'
+    'ReportGenerator', 'ChartGenerator'
 ]
