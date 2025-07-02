@@ -14,7 +14,7 @@ A comprehensive, production-safe benchmarking solution for tiered storage system
 
 The Tiered Storage I/O Benchmark Suite is designed to characterize and analyze the performance of complex storage infrastructures across multiple tiers. It provides safety-first benchmarking with real-time monitoring, sophisticated analysis, and rich visualization capabilities.
 
-Unlike traditional benchmarking tools that focus solely on raw performance numbers, this suite emphasizes safety, comprehensive analysis, and actionable insights—helping you understand not just how fast your storage is, but *why* it performs the way it does and how it affects production workloads.
+Unlike traditional benchmarking tools that focus solely on raw performance numbers, this suite emphasizes safety, comprehensive analysis, and actionable **PERFORMANCE** insights—helping you understand not just how fast your storage is, but *why* it performs the way it does and how it affects production workloads. This suite also provides modules which can be integrated into monitoring systems and opportunity for intelligent job scheduling for performance improvement.
 
 ## Key Features
 
