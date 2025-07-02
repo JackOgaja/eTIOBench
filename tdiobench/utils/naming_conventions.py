@@ -5,8 +5,8 @@ Naming Conventions (Tiered Storage I/O Benchmark)
 This module provides utilities for standardizing naming conventions
 across the benchmark suite.
 
-Author: JackOgaja
-Date: 2025-06-29 21:05:04
+Author: Jack Ogaja
+Date: 2025-06-29
 """
 
 import re
