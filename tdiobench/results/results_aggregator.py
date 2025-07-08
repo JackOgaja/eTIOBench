@@ -1,15 +1,12 @@
+#!/usr/bin/env python3
 """
-Result Store (Tiered Storage I/O Benchmark)
+Result Aggregator (Tiered Storage I/O Benchmark)
 
 This module provides functionality for storing and retrieving benchmark results,
 supporting various storage backends including file system, SQLite, and more.
 
 Author: Jack Ogaja
-Date: 2025-06-26
-"""
-
-"""
-ResultsAggregator - Results Consolidation and Formatting for eTIOBench
+Date: 2025-06-29
 """
 
 import json
