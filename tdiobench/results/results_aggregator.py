@@ -2,8 +2,7 @@
 """
 Result Aggregator (Tiered Storage I/O Benchmark)
 
-This module provides functionality for storing and retrieving benchmark results,
-supporting various storage backends including file system, SQLite, and more.
+This module provides simpple functionality for consolidating benchmark results mainly for CLI,
 
 Author: Jack Ogaja
 Date: 2025-06-29
