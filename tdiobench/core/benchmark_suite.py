@@ -104,7 +104,7 @@ class BenchmarkSuite:
         self.events = []
         self.benchmark_id = str(uuid.uuid4())
         self.running = False
-        self.production_safe_mode = self.config.get("production_safety.enabled", False)
+        self.production_safe_mode = self.config.get("production_safety.enabled", True)
         
         logger.info(f"Benchmark Suite initialized with ID: {self.benchmark_id}")
         if self.production_safe_mode:
