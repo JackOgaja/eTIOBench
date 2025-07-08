@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-eTIOBench - Enhanced Tiered Storage I/O Benchmark Suite
-Unified Command Line Interface
+eTIOBench - Unified CLI commands for the benchmark suite (Tiered Storage I/O Benchmark).
+
+This module defines a comprehensive command line interface for running benchmarks,
+analyzing results, generating reports, and managing configurations.
+
+Author: Jack Ogaja
+Date: 2025-06-29
 """
 
 import click
