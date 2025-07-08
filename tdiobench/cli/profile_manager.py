@@ -1,5 +1,16 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-ProfileManager - Benchmark Profile Management for eTIOBench
+ProfileManager - Benchmark Profile Management for the benchmark suite (Tiered Storage I/O Benchmark).
+
+This module provides methods for managing profiles for the benchmark
+
+Author: Jack Ogaja
+Date: 2025-06-29
+"""
+
+"""
+ eTIOBench
 """
 
 import json
