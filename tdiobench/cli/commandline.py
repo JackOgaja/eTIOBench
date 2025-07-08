@@ -30,7 +30,7 @@ from benchmark_suite import (
     ProfileManager,
     SafetyController
 )
-from benchmark_suite.utils.data_processor import DataAggregator
+from benchmark_suite.results.results_aggregator import DataAggregator
 
 __version__ = "1.0.0"
 
