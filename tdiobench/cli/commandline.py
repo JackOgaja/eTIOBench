@@ -1510,6 +1510,8 @@ def format_comparison_markdown(comparison):
     
     return md
 
+def main():
+    cli()
 
 if __name__ == '__main__':
-    cli()
+    main()
