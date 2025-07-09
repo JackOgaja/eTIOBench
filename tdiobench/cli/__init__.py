@@ -10,8 +10,12 @@ Author: Jack Ogaja
 Date: 2025-06-26
 """
 
-from tdiobench.cli.commands import main, run_command, analyze_command, list_command
-from tdiobench.cli.utils import setup_logging, load_config, validate_config
+from tdiobench.cli.commandline import {
+    cli, run, analyze, report, compare, list_benchmarks, validate, 
+    cleanup, tier, tier_list, tier_add, tier_test, profile, 
+    profile_list, profile_show, profile_validate, check_env 
+    }
+from tdiobench.cli.profile import setup_logging, load_config, validate_config
 
 __version__ = "0.1.0"
 __all__ = [
