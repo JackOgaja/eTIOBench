@@ -27,11 +27,10 @@ import psutil
 from benchmark_suite import (
     BenchmarkSuite,
     TierManager,
-    ProfileManager,
-    SafetyController
+    ProfileManager
 )
-from benchmark_suite.results.results_aggregator import DataAggregator
-from benchmark_suite.cli.profile_manager import ProfileManager
+from benchmark_suite.utils.data_processor import DataAggregator
+from benchmark_suite.core.safety import SafetyController
 
 __version__ = "1.0.0"
 
@@ -153,9 +152,6 @@ def cli(ctx, config, log_level, output_dir):
     # Initialize BenchmarkSuite instance
     ctx.obj.suite = BenchmarkSuite(config_path=config)
 
-    # Initialize Profile Manager
-    ctx.obj.profile = ProfileManager()
-
 
 @cli.command()
 @click.option('--tiers', required=True, help='Comma-separated list of storage tier paths to benchmark')
@@ -190,7 +186,6 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     """Execute storage benchmarks with integrated safety monitoring"""
     
     suite = ctx.obj.suite
-    profile = ctx.obj.profile
     
     # Parse tier list
     tier_list = [t.strip() for t in tiers.split(',')]
@@ -203,13 +198,13 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     
     # Get profile configuration
     if profile:
-        profile_config = profile.get_profile(profile)
+        profile_config = suite.profile_manager.get_profile(profile)
         if not profile_config:
             click.echo(f"Error: Unknown profile: {profile}", err=True)
             sys.exit(1)
     else:
         # Create custom profile from CLI options
-        profile_config = profile.create_custom_profile({
+        profile_config = suite.profile_manager.create_custom_profile({
             'duration': duration,
             'block_sizes': block_sizes.split(','),
             'patterns': patterns.split(','),
@@ -301,11 +296,15 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
             
     except KeyboardInterrupt:
         click.echo("\nBenchmark interrupted by user")
-        suite.safety_controller.emergency_stop()
+        if safety_config['enabled'] and hasattr(suite, 'safety_controller'):
+            suite.safety_controller.emergency_stop()
         sys.exit(1)
     except Exception as e:
         logger.error(f"Benchmark failed: {str(e)}")
         sys.exit(1)
+    finally:
+        if safety_config['enabled'] and hasattr(suite, 'safety_controller'):
+            suite.safety_controller.stop_monitoring()
 
 
 @cli.command()
@@ -800,7 +799,7 @@ def tier_test(ctx, tier_name, quick):
         # Use quick_scan profile for probe
         probe_results = suite.run_benchmark(
             tiers=[tier_info['path']],
-            profile=profile.get_profile('quick_scan'),
+            profile=suite.profile_manager.get_profile('quick_scan'),
             tag='_probe',
             quiet=True
         )
@@ -829,7 +828,7 @@ def profile_list(ctx):
     """List available benchmark profiles"""
     
     suite = ctx.obj.suite
-    profiles = profile.list_profiles()
+    profiles = suite.profile_manager.list_profiles()
     
     click.echo("Available benchmark profiles:")
     for name, config in profiles.items():
@@ -847,7 +846,7 @@ def profile_show(ctx, name):
     """Show detailed profile configuration"""
     
     suite = ctx.obj.suite
-    profile = profile.get_profile(name)
+    profile = suite.profile_manager.get_profile(name)
     
     if not profile:
         click.echo(f"Error: Unknown profile: {name}", err=True)
@@ -863,13 +862,13 @@ def profile_validate(ctx, name):
     """Validate a profile configuration"""
     
     suite = ctx.obj.suite
-    profile = profile.get_profile(name)
+    profile = suite.profile_manager.get_profile(name)
     
     if not profile:
         click.echo(f"Error: Unknown profile: {name}", err=True)
         sys.exit(1)
     
-    issues = profile.validate_profile(profile)
+    issues = suite.profile_manager.validate_profile(profile)
     
     if not issues:
         click.echo(f"✓ Profile '{name}' is valid")
@@ -897,12 +896,13 @@ def check_env(ctx):
         click.echo(f"  {component}: {icon} {status['message']}")
     
     # Check system resources using SafetyController
-    safety = suite.safety_controller
-    resources = safety.check_resources()
+    safety_controller = SafetyController()
+    resources = safety_controller.check_resources()
     
     click.echo("\nSystem resources:")
     click.echo(f"  CPU usage: {resources['cpu_percent']:.1f}%")
     click.echo(f"  Memory usage: {resources['memory_percent']:.1f}%")
+    click.echo(f"  Memory available: {resources['memory_available_gb']:.1f} GB")
     click.echo(f"  Disk free: {resources['disk_free_gb']:.1f} GB")
     
     if all(status['ok'] for status in env_status.values()):
