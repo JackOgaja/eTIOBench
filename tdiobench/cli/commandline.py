@@ -26,8 +26,8 @@ import psutil
 # Import the necessary benchmark modules
 from benchmark_suite.core.benchmark_suite import BenchmarkSuite
 from benchmark_suite.utils.data_processor import DataAggregator
-from benchmark_suite.profile_manager import ProfileManager
-from benchmark_suite.safety_controller import SafetyController
+from benchmark_suite.cli.profile_manager import ProfileManager
+from benchmark_suite.cli.safety_controller import SafetyController
 
 __version__ = "1.0.0"
 
@@ -148,8 +148,11 @@ def cli(ctx, config, log_level, output_dir):
     # Initialize BenchmarkSuite instance
     ctx.obj.suite = BenchmarkSuite(config_path=config)
 
-     # Initialize ProfileManager instance
-    ctx.obj.profile_manager = ProfileManager()
+    # Initialize ProfileManager instance
+    #+ ctx.obj.profile_manager = ProfileManager()
+
+    # Initialize ProfileManager instance
+    #+ ctx.obj.safety_controller = SafetyController()
 
 
 @cli.command()
@@ -185,7 +188,8 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     """Execute storage benchmarks with integrated safety monitoring"""
     
     suite = ctx.obj.suite
-    profile_manager = ctx.obj.profile_manager
+    profile_manager = ProfileManager()
+    safety_controller = SafetyController()
     
     # Parse tier list
     tier_list = [t.strip() for t in tiers.split(',')]
@@ -297,14 +301,14 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     except KeyboardInterrupt:
         click.echo("\nBenchmark interrupted by user")
         if safety_config['enabled'] and hasattr(suite, 'safety_controller'):
-            suite.safety_controller.emergency_stop()
+            safety_controller.emergency_stop()
         sys.exit(1)
     except Exception as e:
         logger.error(f"Benchmark failed: {str(e)}")
         sys.exit(1)
     finally:
         if safety_config['enabled'] and hasattr(suite, 'safety_controller'):
-            suite.safety_controller.stop_monitoring()
+            safety_controller.stop_monitoring()
 
 
 @cli.command()
@@ -776,6 +780,7 @@ def tier_test(ctx, tier_name, quick):
     """Test storage tier connectivity and performance"""
     
     suite = ctx.obj.suite
+    profile_manager = ProfileManager()
     
     # Validate tier exists
     tier_info = suite.tier_manager.get_tier_info(tier_name)
@@ -828,6 +833,8 @@ def profile_list(ctx):
     """List available benchmark profiles"""
     
     suite = ctx.obj.suite
+    profile_manager = ProfileManager()
+    
     profiles = profile_manager.list_profiles()
     
     click.echo("Available benchmark profiles:")
@@ -846,6 +853,8 @@ def profile_show(ctx, name):
     """Show detailed profile configuration"""
     
     suite = ctx.obj.suite
+    profile_manager = ProfileManager()
+    
     profile = profile_manager.get_profile(name)
     
     if not profile:
@@ -862,6 +871,8 @@ def profile_validate(ctx, name):
     """Validate a profile configuration"""
     
     suite = ctx.obj.suite
+    profile_manager = ProfileManager()
+    
     profile = profile_manager.get_profile(name)
     
     if not profile:
@@ -885,6 +896,7 @@ def check_env(ctx):
     """Check environment and dependencies"""
     
     suite = ctx.obj.suite
+    
     
     click.echo("Checking environment...")
     
