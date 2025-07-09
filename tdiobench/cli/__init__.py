@@ -16,17 +16,27 @@ from tdiobench.cli.commandline import {
     profile_list, profile_show, profile_validate, check_env 
     }
 from tdiobench.cli.profile_manager import ProfileManager
-from tdiobench.cli.safety_controller import ProfileManager
+from tdiobench.cli.safety_controller import SafetyController
 
 __version__ = "0.1.0"
 __all__ = [
-    'main',
-    'run_command',
-    'analyze_command',
-    'list_command',
-    'setup_logging',
-    'load_config',
-    'validate_config'
+    'cli',
+    'run',
+    'analyze',
+    'report',
+    'compare',
+    'list_benhcmarks',
+    'validate',
+    'cleanup', 
+    'tier', 
+    'tier_list', 
+    'tier_add', 
+    'tier_test', 
+    'profile', 
+    'profile_list', 
+    'profile_show', 
+    'profile_validate', 
+    'check_env' 
 ]
 
 # Module initialization
