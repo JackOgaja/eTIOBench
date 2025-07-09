@@ -23,10 +23,10 @@ import logging
 import subprocess
 import psutil
 
-# Import the main benchmark suite module
+# Import the necessary benchmark modules
 from benchmark_suite.core.benchmark_suite import BenchmarkSuite
 from benchmark_suite.utils.data_processor import DataAggregator
-from benchmark_suite.profile_manager import SafetyController
+from benchmark_suite.profile_manager import ProfileManager
 from benchmark_suite.safety_controller import SafetyController
 
 __version__ = "1.0.0"
