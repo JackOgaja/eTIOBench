@@ -1,5 +1,16 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-SafetyController - System Resource Monitoring for eTIOBench
+SafetyController - System Resource Monitoring for the benchmark suite (Tiered Storage I/O Benchmark).
+
+This module provides methods for managing profiles for the benchmark
+
+Author: Jack Ogaja
+Date: 2025-06-29
+"""
+
+"""
+ eTIOBench
 """
 
 import psutil
