@@ -15,7 +15,8 @@ from tdiobench.cli.commandline import {
     cleanup, tier, tier_list, tier_add, tier_test, profile, 
     profile_list, profile_show, profile_validate, check_env 
     }
-from tdiobench.cli.profile import setup_logging, load_config, validate_config
+from tdiobench.cli.profile_manager import ProfileManager
+from tdiobench.cli.safety_controller import ProfileManager
 
 __version__ = "0.1.0"
 __all__ = [
