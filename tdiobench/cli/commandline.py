@@ -41,7 +41,6 @@ ENV_PREFIX = 'BENCHMARK_'
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('benchmark-suite')
 
-
 class BenchmarkContext:
     """Enhanced context for benchmark operations"""
     def __init__(self):
@@ -152,6 +151,9 @@ def cli(ctx, config, log_level, output_dir):
     # Initialize BenchmarkSuite instance
     ctx.obj.suite = BenchmarkSuite(config_path=config)
 
+     # Initialize ProfileManager instance
+    ctx.obj.profile_manager = ProfileManager()
+
 
 @cli.command()
 @click.option('--tiers', required=True, help='Comma-separated list of storage tier paths to benchmark')
@@ -186,6 +188,7 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     """Execute storage benchmarks with integrated safety monitoring"""
     
     suite = ctx.obj.suite
+    profile_manager = ctx.obj.profile_manager
     
     # Parse tier list
     tier_list = [t.strip() for t in tiers.split(',')]
@@ -198,13 +201,13 @@ def run(ctx, tiers, duration, block_sizes, patterns, io_depth, num_jobs, rate_li
     
     # Get profile configuration
     if profile:
-        profile_config = suite.profile_manager.get_profile(profile)
+        profile_config = profile_manager.get_profile(profile)
         if not profile_config:
             click.echo(f"Error: Unknown profile: {profile}", err=True)
             sys.exit(1)
     else:
         # Create custom profile from CLI options
-        profile_config = suite.profile_manager.create_custom_profile({
+        profile_config = profile_manager.create_custom_profile({
             'duration': duration,
             'block_sizes': block_sizes.split(','),
             'patterns': patterns.split(','),
@@ -799,7 +802,7 @@ def tier_test(ctx, tier_name, quick):
         # Use quick_scan profile for probe
         probe_results = suite.run_benchmark(
             tiers=[tier_info['path']],
-            profile=suite.profile_manager.get_profile('quick_scan'),
+            profile=profile_manager.get_profile('quick_scan'),
             tag='_probe',
             quiet=True
         )
@@ -828,7 +831,7 @@ def profile_list(ctx):
     """List available benchmark profiles"""
     
     suite = ctx.obj.suite
-    profiles = suite.profile_manager.list_profiles()
+    profiles = profile_manager.list_profiles()
     
     click.echo("Available benchmark profiles:")
     for name, config in profiles.items():
@@ -846,7 +849,7 @@ def profile_show(ctx, name):
     """Show detailed profile configuration"""
     
     suite = ctx.obj.suite
-    profile = suite.profile_manager.get_profile(name)
+    profile = profile_manager.get_profile(name)
     
     if not profile:
         click.echo(f"Error: Unknown profile: {name}", err=True)
@@ -862,13 +865,13 @@ def profile_validate(ctx, name):
     """Validate a profile configuration"""
     
     suite = ctx.obj.suite
-    profile = suite.profile_manager.get_profile(name)
+    profile = profile_manager.get_profile(name)
     
     if not profile:
         click.echo(f"Error: Unknown profile: {name}", err=True)
         sys.exit(1)
     
-    issues = suite.profile_manager.validate_profile(profile)
+    issues = profile_manager.validate_profile(profile)
     
     if not issues:
         click.echo(f"✓ Profile '{name}' is valid")
