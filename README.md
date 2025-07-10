@@ -6,9 +6,9 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://kernel.org)
 [![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)](README.md)
 
-**Professional-grade storage performance analysis platform for multi-tier storage environments**
+**Storage performance analysis platform for multi-tier storage environments**
 
-A comprehensive, production-safe benchmarking solution for tiered storage systems with advanced analysis capabilities.
+Includes a comprehensive, production-safe benchmarking solution for tiered storage systems with advanced analysis capabilities.
 
 ## Overview
 
