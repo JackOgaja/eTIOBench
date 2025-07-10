@@ -12,13 +12,13 @@ import re
 from setuptools import setup, find_packages
 
 # Get the version from __version__.py
-with open('benchmark_suite/__version__.py', 'r') as f:
+with open('tdiobench/__version__.py', 'r') as f:
     version_file = f.read()
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
         version = version_match.group(1)
     else:
-        raise RuntimeError("Unable to find version string in benchmark_suite/__version__.py")
+        raise RuntimeError("Unable to find version string in tdiobench/__version__.py")
 
 # Get the long description from README.md
 with open('README.md', 'r', encoding='utf-8') as f:
@@ -90,7 +90,7 @@ setup(
     python_requires='>=3.8',
     entry_points={
         'console_scripts': [
-            'benchmark-suite=benchmark_suite.cli.commands:main',
+            'benchmark-suite=tdiobench.cli.commandline:main',
         ],
     },
     classifiers=[
