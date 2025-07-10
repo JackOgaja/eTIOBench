@@ -16,12 +16,12 @@ import logging
 from typing import Dict, List, Optional, Any, Union, Type, TYPE_CHECKING
 
 # Import non-circular dependencies
-from benchmark_suite.core.exceptions import ConfigurationError
+from tdiobench.core.exceptions import ConfigurationError
 
 # Use TYPE_CHECKING for type hints to avoid runtime imports
 if TYPE_CHECKING:
-    from benchmark_suite.core.benchmark_suite import BenchmarkSuite
-    from benchmark_suite.engines.base_engine import BaseEngine
+    from tdiobench.core.tdiobench import BenchmarkSuite
+    from tdiobench.engines.base_engine import BaseEngine
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class BenchmarkConfig:
             ConfigurationError: If file cannot be loaded
         """
         # Delayed import to avoid circular dependency
-        from benchmark_suite.config import load_config_file
+        from tdiobench.config import load_config_file
         
         try:
             self._config = load_config_file(config_path)
@@ -85,7 +85,7 @@ class BenchmarkConfig:
             ConfigurationError: If default configuration cannot be loaded
         """
         # Delayed import to avoid circular dependency
-        from benchmark_suite.config import load_config
+        from tdiobench.config import load_config
         
         try:
             self._config = load_config(None)  # None triggers default config
@@ -104,7 +104,7 @@ class BenchmarkConfig:
             ConfigurationError: If configuration is invalid
         """
         # Delayed import to avoid circular dependency
-        from benchmark_suite.config import load_schema, validate_config
+        from tdiobench.config import load_schema, validate_config
         
         try:
             schema = load_schema()
@@ -119,14 +119,14 @@ class BenchmarkConfig:
         Get configuration value using dot notation path.
         
         Args:
-            path: Dot notation path (e.g., "benchmark_suite.core.safety.enabled")
+            path: Dot notation path (e.g., "tdiobench.core.safety.enabled")
             default: Default value if path not found
             
         Returns:
             Configuration value or default
         """
         # Delayed import to avoid circular dependency
-        from benchmark_suite.config import get_config_value
+        from tdiobench.config import get_config_value
         
         return get_config_value(self._config, path, default)
     
@@ -261,7 +261,7 @@ class BenchmarkConfig:
             ConfigurationError: If engine cannot be created
         """
         # Delayed import to avoid circular dependency
-        from benchmark_suite.engines.fio_engine import FIOEngine
+        from tdiobench.engines.fio_engine import FIOEngine
         
         engine_type = self.get("benchmark_suite.execution.engine", "fio")
         
