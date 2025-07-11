@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 
-from tdiobench.core.benchmark_exceptions import DataValidationError
+from tdiobench.core.benchmark_exceptions import BenchmarkDataValidationError
 
 logger = logging.getLogger(__name__)
 
