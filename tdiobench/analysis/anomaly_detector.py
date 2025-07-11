@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
 from statsmodels.tsa.seasonal import seasonal_decompose
 
-from tdiobench.core.exceptions import AnalysisError
+from tdiobench.core.benchmark_exceptions import BenchmarkAnalysisError
 from tdiobench.analysis.base_analyzer import BaseAnalyzer
 from tdiobench.core.benchmark_analysis import AnalysisResult
 
