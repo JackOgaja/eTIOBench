@@ -21,7 +21,7 @@ from scipy import stats
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 
-from tdiobench.core.exceptions import AnalysisError
+from tdiobench.core.benchmark_exceptions import BenchmarkAnalysisError
 from tdiobench.analysis.base_analyzer import BaseAnalyzer
 from tdiobench.core.benchmark_analysis import AnalysisResult
 
