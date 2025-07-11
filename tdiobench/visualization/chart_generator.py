@@ -28,7 +28,7 @@ import plotly.io as pio
 from pathlib import Path
 
 from tdiobench.core.benchmark_data import BenchmarkData
-from tdiobench.core.benchmark_exceptions import VisualizationError
+from tdiobench.core.benchmark_exceptions import BenchmarkVisualizationError
 
 logger = logging.getLogger(__name__)
 
