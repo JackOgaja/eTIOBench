@@ -9,7 +9,7 @@ Date: 2025-06-26
 """
 
 from tdiobench.results.result_store import ResultStore
-from tdiobench.results.result_aggregator import ResultsAggregator
+from tdiobench.results.results_aggregator import ResultsAggregator
 
 __all__ = [
   'ResultStore',
