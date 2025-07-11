@@ -24,10 +24,10 @@ import subprocess
 import psutil
 
 # Import the necessary benchmark modules
-from benchmark_suite.core.benchmark_suite import BenchmarkSuite
-from benchmark_suite.utils.data_processor import DataAggregator
-from benchmark_suite.cli.profile_manager import ProfileManager
-from benchmark_suite.cli.safety_controller import SafetyController
+from tdiobench.core.benchmark_suite import BenchmarkSuite
+from tdiobench.utils.data_processor import DataAggregator
+from tdiobench.cli.profile_manager import ProfileManager
+from tdiobench.cli.safety_controller import SafetyController
 
 __version__ = "1.0.0"
 
