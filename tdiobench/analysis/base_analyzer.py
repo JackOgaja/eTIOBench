@@ -138,18 +138,18 @@ class BaseAnalyzer(ABC):
         self._results = {}
         logger.info(f"Loaded data with ID: {self._data.id}")
     
-    @abstractmethod
-    def analyze(self) -> Dict[str, Any]:
-        """
-        Perform analysis on the benchmark data.
-        
-        This method must be implemented by subclasses to perform the
-        specific analysis required for that analyzer type.
-        
-        Returns:
-            Dictionary of analysis results
-        """
-        pass
+    # @abstractmethod
+    # def analyze(self) -> Dict[str, Any]:
+    #    """
+    #    Perform analysis on the benchmark data.
+    #    
+    #    This method must be implemented by subclasses to perform the
+    #    specific analysis required for that analyzer type.
+    #    
+    #    Returns:
+    #        Dictionary of analysis results
+    #    """
+    #    pass
     
     def get_results(self, force_reanalyze: bool = False) -> Dict[str, Any]:
         """
@@ -185,23 +185,23 @@ class BaseAnalyzer(ABC):
             
         return results[key]
     
-    @abstractmethod
-    def generate_report(self, output_path: Optional[str] = None, 
-                        format: Optional[str] = None) -> str:
-        """
-        Generate a report from analysis results.
-        
-        This method must be implemented by subclasses to create a
-        report in the desired format based on the analysis results.
-        
-        Args:
-            output_path: Optional path to save the report
-            format: Report format ('markdown', 'html', 'pdf', etc.)
-            
-        Returns:
-            Report content as a string
-        """
-        pass
+    # @abstractmethod
+    # def generate_report(self, output_path: Optional[str] = None, 
+    #                    format: Optional[str] = None) -> str:
+    #    """
+    #    Generate a report from analysis results.
+    #    
+    #    This method must be implemented by subclasses to create a
+    #    report in the desired format based on the analysis results.
+    #    
+    #    Args:
+    #        output_path: Optional path to save the report
+    #        format: Report format ('markdown', 'html', 'pdf', etc.)
+    #        
+    #    Returns:
+    #        Report content as a string
+    #    """
+    #    pass
     
     def generate_figure(self, figure_type: str, **kwargs) -> plt.Figure:
         """
