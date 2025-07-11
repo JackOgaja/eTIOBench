@@ -40,7 +40,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         Configuration dictionary
         
     Raises:
-        BenchmarkConfigError: If configuration file cannot be loaded or validated
+        ConfigurationError: If configuration file cannot be loaded or validated
     """
     # Load schema first
     schema = load_schema()
@@ -77,7 +77,7 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
         Configuration dictionary
         
     Raises:
-        BenchmarkConfigError: If file format is unsupported or file cannot be read
+        ConfigurationError: If file format is unsupported or file cannot be read
     """
     config_path = os.path.expanduser(config_path)
     
@@ -120,7 +120,7 @@ def load_schema() -> Dict[str, Any]:
         Schema dictionary
         
     Raises:
-        BenchmarkConfigError: If schema file cannot be loaded
+        ConfigurationError: If schema file cannot be loaded
     """
     try:
         with open(SCHEMA_PATH, 'r') as f:
@@ -138,7 +138,7 @@ def validate_config(config: Dict[str, Any], schema: Dict[str, Any]) -> None:
         schema: Schema dictionary
         
     Raises:
-        BenchmarkConfigError: If configuration does not match schema
+        ConfigurationError: If configuration does not match schema
     """
     try:
         jsonschema.validate(instance=config, schema=schema)
@@ -207,7 +207,7 @@ def save_config(config: Dict[str, Any], output_path: str, format: str = 'json') 
         format: Output format ('json' or 'yaml')
         
     Raises:
-        BenchmarkConfigError: If configuration cannot be saved
+        ConfigurationError: If configuration cannot be saved
     """
     try:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
