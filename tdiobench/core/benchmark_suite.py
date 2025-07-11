@@ -478,7 +478,8 @@ class BenchmarkSuite:
         # Network impact analysis
         if enable_all_modules or self.config.get("analysis.network.enabled", False):
             logger.info("Performing network impact analysis")
-            network_results = self.network_analyzer.analyze_network_impact(benchmark_data)
+            #JO+ network_results = self.network_analyzer.analyze_network_impact(benchmark_data)
+            network_results = self.network_analyzer.analyze_network_metrics(benchmark_data)
             benchmark_result.add_analysis_results("network", network_results)
         
         # Anomaly detection
