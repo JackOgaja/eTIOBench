@@ -33,4 +33,4 @@ __all__ = [
 # Module initialization
 import logging
 logger = logging.getLogger(__name__)
-logger.debug(f"Benchmark Suite Core module initialized (version {__version__})")
+#+ logger.debug(f"Benchmark Suite Core module initialized (version {__version__})")
