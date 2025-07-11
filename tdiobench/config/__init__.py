@@ -40,7 +40,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         Configuration dictionary
         
     Raises:
-        ConfigurationError: If configuration file cannot be loaded or validated
+        BenchmarkConfigError: If configuration file cannot be loaded or validated
     """
     # Load schema first
     schema = load_schema()
@@ -52,7 +52,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         elif os.path.exists(DEFAULT_CONFIG_YAML):
             config_path = DEFAULT_CONFIG_YAML
         else:
-            raise ConfigurationError(
+            raise BenchmarkConfigError(
                 f"No configuration path provided and default configurations not found at "
                 f"{DEFAULT_CONFIG_JSON} or {DEFAULT_CONFIG_YAML}"
             )
@@ -63,7 +63,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         validate_config(config, schema)
         return config
     except Exception as e:
-        raise ConfigurationError(f"Failed to load configuration from {config_path}: {str(e)}")
+        raise BenchmarkConfigError(f"Failed to load configuration from {config_path}: {str(e)}")
 
 
 def load_config_file(config_path: str) -> Dict[str, Any]:
@@ -77,12 +77,12 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
         Configuration dictionary
         
     Raises:
-        ConfigurationError: If file format is unsupported or file cannot be read
+        BenchmarkConfigError: If file format is unsupported or file cannot be read
     """
     config_path = os.path.expanduser(config_path)
     
     if not os.path.exists(config_path):
-        raise ConfigurationError(f"Configuration file not found: {config_path}")
+        raise BenchmarkConfigError(f"Configuration file not found: {config_path}")
     
     try:
         ext = os.path.splitext(config_path)[1].lower()
@@ -105,11 +105,11 @@ def load_config_file(config_path: str) -> Dict[str, Any]:
                 # Try YAML as fallback
                 return yaml.safe_load(content)
     except json.JSONDecodeError:
-        raise ConfigurationError(f"Invalid JSON in configuration file: {config_path}")
+        raise BenchmarkConfigError(f"Invalid JSON in configuration file: {config_path}")
     except yaml.YAMLError:
-        raise ConfigurationError(f"Invalid YAML in configuration file: {config_path}")
+        raise BenchmarkConfigError(f"Invalid YAML in configuration file: {config_path}")
     except Exception as e:
-        raise ConfigurationError(f"Error reading configuration file: {str(e)}")
+        raise BenchmarkConfigError(f"Error reading configuration file: {str(e)}")
 
 
 def load_schema() -> Dict[str, Any]:
@@ -120,13 +120,13 @@ def load_schema() -> Dict[str, Any]:
         Schema dictionary
         
     Raises:
-        ConfigurationError: If schema file cannot be loaded
+        BenchmarkConfigError: If schema file cannot be loaded
     """
     try:
         with open(SCHEMA_PATH, 'r') as f:
             return json.load(f)
     except Exception as e:
-        raise ConfigurationError(f"Failed to load schema from {SCHEMA_PATH}: {str(e)}")
+        raise BenchmarkConfigError(f"Failed to load schema from {SCHEMA_PATH}: {str(e)}")
 
 
 def validate_config(config: Dict[str, Any], schema: Dict[str, Any]) -> None:
@@ -138,12 +138,12 @@ def validate_config(config: Dict[str, Any], schema: Dict[str, Any]) -> None:
         schema: Schema dictionary
         
     Raises:
-        ConfigurationError: If configuration does not match schema
+        BenchmarkConfigError: If configuration does not match schema
     """
     try:
         jsonschema.validate(instance=config, schema=schema)
     except jsonschema.exceptions.ValidationError as e:
-        raise ConfigurationError(f"Configuration validation failed: {str(e)}")
+        raise BenchmarkConfigError(f"Configuration validation failed: {str(e)}")
 
 
 def get_config_value(config: Dict[str, Any], path: str, default: Any = None) -> Any:
@@ -207,7 +207,7 @@ def save_config(config: Dict[str, Any], output_path: str, format: str = 'json') 
         format: Output format ('json' or 'yaml')
         
     Raises:
-        ConfigurationError: If configuration cannot be saved
+        BenchmarkConfigError: If configuration cannot be saved
     """
     try:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -219,8 +219,8 @@ def save_config(config: Dict[str, Any], output_path: str, format: str = 'json') 
             with open(output_path, 'w') as f:
                 yaml.dump(config, f, default_flow_style=False)
         else:
-            raise ConfigurationError(f"Unsupported configuration format: {format}")
+            raise BenchmarkConfigError(f"Unsupported configuration format: {format}")
             
         logger.info(f"Configuration saved to {output_path}")
     except Exception as e:
-        raise ConfigurationError(f"Failed to save configuration to {output_path}: {str(e)}")
+        raise BenchmarkConfigError(f"Failed to save configuration to {output_path}: {str(e)}")
