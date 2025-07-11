@@ -16,7 +16,7 @@ import logging
 from typing import Dict, List, Optional, Any, Union, Type, TYPE_CHECKING
 
 # Import non-circular dependencies
-from tdiobench.core.exceptions import ConfigurationError
+from tdiobench.core.benchmark_exceptions import BenchmarkConfigError
 
 # Use TYPE_CHECKING for type hints to avoid runtime imports
 if TYPE_CHECKING:
