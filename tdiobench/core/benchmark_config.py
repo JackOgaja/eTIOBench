@@ -75,7 +75,7 @@ class BenchmarkConfig:
             self._config = load_config_file(config_path)
             logger.info(f"Loaded configuration from {config_path}")
         except Exception as e:
-            raise ConfigurationError(f"Failed to load configuration from {config_path}: {str(e)}")
+            raise BenchmarkConfigError(f"Failed to load configuration from {config_path}: {str(e)}")
     
     def _load_default_config(self) -> None:
         """
@@ -91,7 +91,7 @@ class BenchmarkConfig:
             self._config = load_config(None)  # None triggers default config
             logger.info("Loaded default configuration")
         except Exception as e:
-            raise ConfigurationError(f"Failed to load default configuration: {str(e)}")
+            raise BenchmarkConfigError(f"Failed to load default configuration: {str(e)}")
     
     def validate(self) -> bool:
         """
@@ -112,7 +112,7 @@ class BenchmarkConfig:
             self._validated = True
             return True
         except Exception as e:
-            raise ConfigurationError(f"Configuration validation failed: {str(e)}")
+            raise BenchmarkConfigError(f"Configuration validation failed: {str(e)}")
     
     def get(self, path: str, default: Any = None) -> Any:
         """
@@ -149,7 +149,7 @@ class BenchmarkConfig:
             if tier.get("name") == tier_name:
                 return tier
                 
-        raise ConfigurationError(f"Storage tier not found: {tier_name}")
+        raise BenchmarkConfigError(f"Storage tier not found: {tier_name}")
     
     def get_profile_config(self, profile_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -172,7 +172,7 @@ class BenchmarkConfig:
         if profile_name in profiles:
             return profiles[profile_name]
                 
-        raise ConfigurationError(f"Benchmark profile not found: {profile_name}")
+        raise BenchmarkConfigError(f"Benchmark profile not found: {profile_name}")
     
     def get_safety_config(self, profile_name: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -197,7 +197,7 @@ class BenchmarkConfig:
                 if profile_safety:
                     safety_config.update(profile_safety)
                     
-            except ConfigurationError:
+            except BenchmarkConfigError:
                 # If profile not found, just use base safety config
                 pass
                 
@@ -269,7 +269,7 @@ class BenchmarkConfig:
             engine_path = self.get("benchmark_suite.execution.engine_path", "/usr/bin/fio")
             return FIOEngine(self, engine_path)
         else:
-            raise ConfigurationError(f"Unsupported engine type: {engine_type}")
+            raise BenchmarkConfigError(f"Unsupported engine type: {engine_type}")
     
     def as_dict(self) -> Dict[str, Any]:
         """
