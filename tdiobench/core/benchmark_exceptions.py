@@ -37,6 +37,11 @@ class BenchmarkDataError(BenchmarkError):
     pass
 
 
+class BenchmarkDataValidationError(BenchmarkError):
+    """Exception raised for data handling errors."""
+    pass
+
+
 class BenchmarkAnalysisError(BenchmarkError):
     """Exception raised for analysis errors."""
     pass
