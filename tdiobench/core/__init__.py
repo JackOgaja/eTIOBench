@@ -30,6 +30,8 @@ __all__ = [
     'BenchmarkTimeoutError', 'BenchmarkAuthenticationError', 'BenchmarkStorageError'
 ]
 
+__version__ = ""
+
 # Module initialization
 import logging
 logger = logging.getLogger(__name__)
