@@ -18,7 +18,7 @@ from typing import Dict, Any, Optional, Union
 from pathlib import Path
 import jsonschema
 
-from benchmark_suite.core.exceptions import ConfigurationError
+from tdiobench.core.benchmark_exceptions import BenchmarkConfigurationError
 
 logger = logging.getLogger(__name__)
 
