@@ -13,7 +13,7 @@ import unittest
 import logging
 from unittest.mock import MagicMock, patch
 
-from tdiobench.tests.test_utils import TestEnvironment
+from tdiobench.tests.test_utils import BenchmarkTestEnvironment
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_suite import BenchmarkSuite
 
@@ -26,7 +26,7 @@ class BenchmarkTestCase(unittest.TestCase):
         logging.basicConfig(level=logging.INFO)
         
         # Create test environment
-        self.test_env = TestEnvironment()
+        self.test_env = BenchmarkTestEnvironment()
         
         # Create test configuration
         self.config = self.test_env.create_test_config()

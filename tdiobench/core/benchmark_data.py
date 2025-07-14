@@ -974,6 +974,15 @@ class BenchmarkResult:
         self.parameters = parameters or {}
         self.raw_data = raw_data or {}
         
+        # Initialize analysis_results dictionary
+        self.analysis_results = {}
+        
+        # Initialize tier_results dictionary for multi-tier results
+        self.tier_results = {}
+        
+        # Initialize tiers list
+        self.tiers = []
+        
         # Calculate duration
         try:
             start_dt = pd.to_datetime(self.start_time)
@@ -983,6 +992,11 @@ class BenchmarkResult:
             self.duration_seconds = None
             
         logger.debug(f"Created BenchmarkResult for run {run_id} on tier {tier_name}")
+    
+    @property
+    def duration(self) -> Optional[float]:
+        """Get the benchmark duration in seconds."""
+        return self.duration_seconds
     
     @property
     def throughput(self) -> Optional[float]:
@@ -1087,6 +1101,29 @@ class BenchmarkResult:
             
         return row
     
+    def get_tiers(self) -> List[str]:
+        """
+        Get the list of tiers in this benchmark result.
+        
+        Returns:
+            List of tier names/paths
+        """
+        return self.tiers if hasattr(self, 'tiers') else []
+    
+    def get_tier_result(self, tier: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the result data for a specific tier.
+        
+        Args:
+            tier: Tier name/path
+            
+        Returns:
+            Tier result data or None if not found
+        """
+        if hasattr(self, 'tier_results') and tier in self.tier_results:
+            return self.tier_results[tier]
+        return None
+    
     def merge_raw_data(self, raw_data: Dict[str, Any]) -> None:
         """
         Merge additional raw data into the result.
@@ -1104,6 +1141,18 @@ class BenchmarkResult:
             metrics: Metrics to update
         """
         self.metrics.update(metrics)
+    
+    def add_analysis_results(self, analysis_type: str, results: Dict[str, Any]) -> None:
+        """
+        Add analysis results to the benchmark result.
+        
+        Args:
+            analysis_type: Type of analysis (e.g., "statistics", "anomaly")
+            results: Analysis results dictionary
+        """
+        # Use the pre-initialized self.analysis_results dictionary
+        self.analysis_results[analysis_type] = results
+        logger.debug(f"Added {analysis_type} analysis results to benchmark result")
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'BenchmarkResult':
@@ -1126,6 +1175,90 @@ class BenchmarkResult:
             parameters=data.get("parameters", {}),
             raw_data=data.get("raw_data", {})
         )
+    
+    @classmethod
+    def from_benchmark_data(cls, benchmark_data: 'BenchmarkData') -> 'BenchmarkResult':
+        """
+        Create a BenchmarkResult from BenchmarkData.
+        
+        Args:
+            benchmark_data: BenchmarkData to convert
+            
+        Returns:
+            BenchmarkResult instance
+        """
+        result = cls(
+            run_id=benchmark_data.benchmark_id,
+            tier_name="multiple",  # This result contains multiple tiers
+            profile_name="multiple",  # This result may contain multiple profiles
+            start_time=benchmark_data.created_at,
+            metrics={},
+            parameters={
+                "tiers": benchmark_data.get_tiers(),
+                "duration": benchmark_data.data.get("duration"),
+                "block_sizes": benchmark_data.data.get("block_sizes"),
+                "patterns": benchmark_data.data.get("patterns")
+            }
+        )
+        
+        # Set benchmark_id for compatibility with result_store
+        result.benchmark_id = benchmark_data.benchmark_id
+        
+        # Add tier results
+        result.tiers = benchmark_data.get_tiers()
+        result.tier_results = {}
+        
+        for tier in result.tiers:
+            tier_result = benchmark_data.get_tier_result(tier)
+            if tier_result:
+                result.tier_results[tier] = tier_result
+        
+        # Add analysis results placeholder
+        result.analysis_results = {}
+        
+        return result
+        
+    def get_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of the benchmark result.
+        
+        Returns:
+            Dictionary with result summary
+        """
+        # Create a basic summary with what we have
+        summary = {
+            "id": self.run_id,
+            "benchmark_id": self.benchmark_id if hasattr(self, "benchmark_id") else self.run_id,
+            "tier_name": self.tier_name,
+            "profile_name": self.profile_name,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "duration_seconds": self.duration_seconds,
+            "metrics": self.metrics
+        }
+        
+        # Add tier results summary if available
+        if hasattr(self, "tiers") and hasattr(self, "tier_results"):
+            summary["tiers"] = self.tiers
+            summary["tier_summaries"] = {}
+            
+            for tier in self.tiers:
+                if tier in self.tier_results:
+                    tier_result = self.tier_results[tier]
+                    if "summary" in tier_result:
+                        summary["tier_summaries"][tier] = tier_result["summary"]
+        
+        # Add analysis results summary if available
+        if hasattr(self, "analysis_results") and self.analysis_results:
+            summary["analysis"] = {}
+            for analysis_type, results in self.analysis_results.items():
+                if isinstance(results, dict) and "summary" in results:
+                    summary["analysis"][analysis_type] = results["summary"]
+                else:
+                    # Just add a placeholder
+                    summary["analysis"][analysis_type] = {"status": "completed"}
+        
+        return summary
     
     def __str__(self) -> str:
         """String representation of the benchmark result."""
@@ -1169,7 +1302,12 @@ class BenchmarkData:
     @property
     def id(self) -> str:
         """Get the unique identifier for this benchmark data."""
-        return self._metadata.get("id", str(uuid.uuid4()))
+        return self._metadata.get("benchmark_id") or self._metadata.get("id", str(uuid.uuid4()))
+    
+    @property
+    def benchmark_id(self) -> str:
+        """Get the benchmark identifier (alias for id property)."""
+        return self.id
     
     @property
     def created_at(self) -> str:
@@ -1190,6 +1328,11 @@ class BenchmarkData:
     def data(self) -> Dict[str, Any]:
         """Get the raw data dictionary."""
         return self._data.copy()
+    
+    @property
+    def tiers(self) -> List[str]:
+        """Get the list of tiers."""
+        return self.get_tiers()
     
     def add_metadata(self, key: str, value: Any) -> None:
         """
@@ -1264,6 +1407,31 @@ class BenchmarkData:
             
         self._data["runs"][result.run_id] = result.to_dict()
         logger.debug(f"Added benchmark result: {result.run_id}")
+    
+    def add_tier_result(self, tier: str, result: Dict[str, Any]) -> None:
+        """
+        Add result data for a specific storage tier.
+        
+        Args:
+            tier: Storage tier path
+            result: Result data for this tier
+        """
+        if "tier_results" not in self._data:
+            self._data["tier_results"] = {}
+        self._data["tier_results"][tier] = result
+    
+    def get_tier_result(self, tier: str) -> Optional[Dict[str, Any]]:
+        """
+        Get result data for a specific storage tier.
+        
+        Args:
+            tier: Storage tier path
+            
+        Returns:
+            Result data for the tier, or None if not found
+        """
+        tier_results = self._data.get("tier_results", {})
+        return tier_results.get(tier)
     
     def get_benchmark_results(self) -> List[BenchmarkResult]:
         """
@@ -1374,6 +1542,26 @@ class BenchmarkData:
             return TimeSeriesData()
             
         return TimeSeriesData(self._data["time_series"])
+    
+    def has_time_series_data(self) -> bool:
+        """
+        Check if the benchmark data contains time series data.
+        
+        Returns:
+            True if time series data exists, False otherwise
+        """
+        return "time_series" in self._data and self._data["time_series"] and len(self._data["time_series"]) > 0
+    
+    def get_time_series_points(self) -> int:
+        """
+        Get the number of time series data points.
+        
+        Returns:
+            Number of time series data points
+        """
+        if "time_series" in self._data and isinstance(self._data["time_series"], list):
+            return len(self._data["time_series"])
+        return 0
     
     def set_time_series_data(self, time_series: TimeSeriesData) -> None:
         """
@@ -1690,20 +1878,6 @@ class BenchmarkData:
         self_results = self.get_engine_results()
         other_results = other.get_engine_results()
         
-        for engine, ops in self_results.items():
-            for op, results in ops.items():
-                merged.add_engine_result(engine, op, results)
-    
-        for engine, ops in other_results.items():
-            for op, results in ops.items():
-                # Skip if already added from self
-                if engine in self_results and op in self_results[engine]:
-                    continue
-                merged.add_engine_result(engine, op, results)
-        
-        # Merge benchmark results
-        for result in self.get_benchmark_results():
-            merged.add_benchmark_result(result)
             
         for result in other.get_benchmark_results():
             # Skip if already added from self
@@ -1930,3 +2104,21 @@ class BenchmarkData:
         
         # Compare data content
         return self_meta == other_meta and self._data == other._data
+    
+    def get_tiers(self) -> List[str]:
+        """
+        Get list of storage tiers in this benchmark data.
+        
+        Returns:
+            List of tier paths/names
+        """
+        return self._data.get("tiers", [])
+    
+    def set_system_metrics(self, metrics: Dict[str, Any]) -> None:
+        """
+        Set system metrics data.
+        
+        Args:
+            metrics: System metrics data
+        """
+        self._data["system_metrics"] = metrics

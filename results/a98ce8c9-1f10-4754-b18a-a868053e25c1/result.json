@@ -1,0 +1,22 @@
+{
+  "run_id": "a98ce8c9-1f10-4754-b18a-a868053e25c1",
+  "tier_name": "multiple",
+  "profile_name": "multiple",
+  "start_time": "2025-07-14T14:55:09.262052",
+  "end_time": "2025-07-14T14:55:09.262073",
+  "duration_seconds": 2.1e-05,
+  "metrics": {},
+  "parameters": {
+    "tiers": [
+      "/var/folders/xg/kw10v96x4f55qg8xr7wsr9nm0000gn/T/benchmark_integration_test_24zn1k3c/tier1",
+      "/var/folders/xg/kw10v96x4f55qg8xr7wsr9nm0000gn/T/benchmark_integration_test_24zn1k3c/tier2"
+    ],
+    "duration": 30,
+    "block_sizes": [
+      "4k"
+    ],
+    "patterns": [
+      "read"
+    ]
+  }
+}

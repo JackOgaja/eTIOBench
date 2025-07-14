@@ -20,7 +20,7 @@ from typing import Dict, List, Any, Optional, Tuple, Callable
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkData, BenchmarkResult, TimeSeriesData
 
-class TestEnvironment:
+class BenchmarkTestEnvironment:
     """Helper class for setting up and tearing down test environments."""
     
     def __init__(self):
@@ -74,34 +74,64 @@ class TestEnvironment:
         """
         if config_dict is None:
             config_dict = {
-                "production_safety": {
-                    "enabled": False
-                },
-                "collection": {
-                    "time_series": {
-                        "enabled": True,
-                        "interval": 0.1
+                "benchmark_suite": {
+                    "core": {
+                        "safety": {
+                            "enabled": False
+                        },
+                        "output": {
+                            "base_directory": "./test_results"
+                        },
+                        "logging": {
+                            "level": "INFO"
+                        }
                     },
-                    "system_metrics": {
-                        "enabled": True,
-                        "interval": 0.5
-                    }
-                },
-                "analysis": {
-                    "statistics": {
-                        "enabled": True,
-                        "confidence_level": 95
+                    "tiers": {
+                        "tier_definitions": [
+                            {
+                                "name": "test_tier",
+                                "path": "/tmp/test",
+                                "type": "auto",
+                                "description": "Test tier"
+                            }
+                        ]
                     },
-                    "time_series": {
-                        "enabled": True
+                    "benchmark_profiles": {
+                        "test_profile": {
+                            "description": "Test profile",
+                            "duration_seconds": 5,
+                            "block_sizes": ["4k"],
+                            "patterns": ["read"]
+                        }
                     },
-                    "network": {
-                        "enabled": True
+                    "execution": {
+                        "engine": "fio"
                     },
-                    "anomaly_detection": {
-                        "enabled": True,
-                        "method": "z_score",
-                        "threshold": 3.0
+                    "collection": {
+                        "time_series": {
+                            "enabled": True,
+                            "interval": 0.1
+                        },
+                        "system_metrics": {
+                            "enabled": True,
+                            "interval": 0.5
+                        }
+                    },
+                    "analysis": {
+                        "statistical": {
+                            "enabled": True
+                        },
+                        "time_series": {
+                            "enabled": True
+                        },
+                        "network": {
+                            "enabled": True
+                        },
+                        "anomaly_detection": {
+                            "enabled": True,
+                            "method": "z_score",
+                            "threshold": 3.0
+                        }
                     }
                 }
             }
@@ -202,11 +232,15 @@ class TestEnvironment:
         # Create benchmark data
         tiers = [f"/test/tier{i+1}" for i in range(num_tiers)]
         benchmark_data = BenchmarkData(
-            benchmark_id="test_benchmark_id",
-            tiers=tiers,
-            duration=duration,
-            block_sizes=["4k", "64k", "1m"],
-            patterns=["read", "write", "randrw"]
+            data={
+                "tiers": tiers,
+                "duration": duration,
+                "block_sizes": ["4k", "64k", "1m"],
+                "patterns": ["read", "write", "randrw"]
+            },
+            metadata={
+                "benchmark_id": "test_benchmark_id"
+            }
         )
         
         # Add tier results

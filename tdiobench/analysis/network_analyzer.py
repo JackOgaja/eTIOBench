@@ -18,6 +18,7 @@ from typing import Dict, List, Tuple, Optional, Union, Any
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+from datetime import datetime
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import DBSCAN
 
@@ -61,43 +62,56 @@ class NetworkAnalyzer(BaseAnalyzer):
         self.correlation_threshold = self.network_config.get("correlation_threshold", 0.7)
         
         logger.debug(f"Initialized NetworkAnalyzer with interface_monitoring={self.interface_monitoring}")
-    
-    def analyze_network_metrics(self, data: pd.DataFrame,
+        
+    def analyze_network_metrics(self, data,
                                storage_metrics: List[str] = None) -> AnalysisResult:
         """
         Analyze network metrics and their impact on storage performance.
-        
+    
         This is the main entry point for network analysis that runs various
         network-related analyses based on configuration.
-        
+    
         Args:
-            data: DataFrame containing benchmark and network metrics time series data
+            data: BenchmarkData object or DataFrame containing benchmark and network metrics time series data
             storage_metrics: List of storage metric columns to correlate with network
-            
+    
         Returns:
             AnalysisResult object containing network analysis results
         """
         if not self.enabled:
             logger.info("Network analysis disabled in config")
             return AnalysisResult(
-                name="network_analysis",
-                status="skipped",
-                data={"reason": "Network analysis disabled in configuration"}
+                analysis_type="network_analysis",
+                benchmark_id=data.id if hasattr(data, 'id') else "unknown",
+                timestamp=datetime.now().isoformat()
             )
         
-        if data.empty:
+        # Handle BenchmarkData type (convert to DataFrame if necessary)
+        df = None
+        if hasattr(data, 'get_time_series_data'):
+            # Convert BenchmarkData to DataFrame
+            time_series = data.get_time_series_data()
+            df = time_series.get_dataframe() if hasattr(time_series, 'get_dataframe') else pd.DataFrame()
+        elif isinstance(data, pd.DataFrame):
+            df = data
+        else:
+            df = pd.DataFrame()
+            
+        if df.empty:
             logger.warning("Cannot analyze network metrics in empty dataset")
             return AnalysisResult(
-                name="network_analysis",
-                status="error",
-                data={"error": "Empty dataset provided"}
+                analysis_type="network_analysis",
+                benchmark_id=data.id if hasattr(data, 'id') else "unknown",
+                timestamp=datetime.now().isoformat()
             )
         
         # Default storage metrics if none provided
         if storage_metrics is None:
             storage_metrics = ["throughput_MBps", "iops", "latency_ms"]
-            # Filter to only include metrics that exist in the data
-            storage_metrics = [m for m in storage_metrics if m in data.columns]
+            
+        # Filter to only include metrics that exist in the data
+        if not df.empty and len(df.columns) > 0:
+            storage_metrics = [m for m in storage_metrics if m in df.columns]
         
         # Identify network metrics in the data
         network_metrics = self._identify_network_metrics(data)

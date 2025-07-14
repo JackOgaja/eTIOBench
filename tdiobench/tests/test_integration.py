@@ -9,6 +9,7 @@ Date: 2025-06-26
 """
 
 import os
+import json
 import unittest
 import tempfile
 import shutil
@@ -61,40 +62,64 @@ class IntegrationTest(BenchmarkTestCase):
                 
                 # Configure benchmark suite
                 config = BenchmarkConfig({
-                    "production_safety": {
-                        "enabled": False
-                    },
-                    "collection": {
-                        "time_series": {
-                            "enabled": True,
-                            "interval": 0.1
+                    "benchmark_suite": {
+                        "core": {
+                            "safety": {
+                                "enabled": False
+                            },
+                            "output": {
+                                "base_directory": output_dir
+                            },
+                            "logging": {
+                                "level": "INFO"
+                            }
                         },
-                        "system_metrics": {
-                            "enabled": True
+                        "tiers": {
+                            "tier_definitions": [
+                                {"name": "tier1", "path": tier1, "type": "auto"},
+                                {"name": "tier2", "path": tier2, "type": "auto"}
+                            ]
+                        },
+                        "benchmark_profiles": {
+                            "test_profile": {
+                                "description": "Integration test profile",
+                                "duration_seconds": 10,
+                                "block_sizes": ["4k"],
+                                "patterns": ["read", "write"]
+                            }
+                        },
+                        "execution": {
+                            "engine": "fio"
+                        },
+                        "collection": {
+                            "time_series": {
+                                "enabled": True,
+                                "interval": 0.1
+                            },
+                            "system_metrics": {
+                                "enabled": True
+                            }
+                        },
+                        "analysis": {
+                            "statistical": {
+                                "enabled": True
+                            },
+                            "time_series": {
+                                "enabled": True
+                            },
+                            "network": {
+                                "enabled": True
+                            },
+                            "anomaly_detection": {
+                                "enabled": True
+                            }
+                        },
+                        "visualization": {
+                            "reports": {
+                                "enabled": True,
+                                "formats": ["json"]
+                            }
                         }
-                    },
-                    "analysis": {
-                        "statistics": {
-                            "enabled": True
-                        },
-                        "time_series": {
-                            "enabled": True
-                        },
-                        "network": {
-                            "enabled": True
-                        },
-                        "anomaly_detection": {
-                            "enabled": True
-                        }
-                    },
-                    "visualization": {
-                        "reports": {
-                            "enabled": True,
-                            "formats": ["json"]
-                        }
-                    },
-                    "output": {
-                        "directory": output_dir
                     }
                 })
                 
@@ -116,7 +141,7 @@ class IntegrationTest(BenchmarkTestCase):
                 # Run benchmark
                 result = suite.run_comprehensive_analysis(
                     tiers=[tier1, tier2],
-                    duration=10,
+                    duration=30,  # Changed from 10 to meet minimum requirement
                     block_sizes=["4k"],
                     patterns=["read"],
                     enable_all_modules=True

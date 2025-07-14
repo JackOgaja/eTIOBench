@@ -28,26 +28,43 @@ class BenchmarkConfigTest(BenchmarkTestCase):
     def test_config_get(self):
         """Test configuration get method."""
         config = BenchmarkConfig({
-            "test": {
-                "nested": {
-                    "value": 123
+            "benchmark_suite": {
+                "core": {
+                    "safety": {"enabled": False}
+                },
+                "tiers": {
+                    "tier_definitions": [{"name": "test", "path": "/tmp", "type": "auto"}]
+                },
+                "benchmark_profiles": {
+                    "test": {
+                        "description": "test",
+                        "duration_seconds": 5,
+                        "block_sizes": ["4k"],
+                        "patterns": ["read"]
+                    }
+                },
+                "execution": {"engine": "fio"},
+                "test": {
+                    "nested": {
+                        "value": 123
+                    }
                 }
             }
         })
         
-        self.assertEqual(config.get("test.nested.value"), 123)
-        self.assertEqual(config.get("test.nested.nonexistent", "default"), "default")
+        self.assertEqual(config.get("benchmark_suite.test.nested.value"), 123)
+        self.assertEqual(config.get("benchmark_suite.test.nested.nonexistent", "default"), "default")
     
     def test_config_set(self):
         """Test configuration set method."""
-        config = BenchmarkConfig()
+        config = self.test_env.create_test_config()
         
-        config.set("test.nested.value", 123)
-        self.assertEqual(config.get("test.nested.value"), 123)
+        config.set("benchmark_suite.test.nested.value", 123)
+        self.assertEqual(config.get("benchmark_suite.test.nested.value"), 123)
         
         # Update value
-        config.set("test.nested.value", 456)
-        self.assertEqual(config.get("test.nested.value"), 456)
+        config.set("benchmark_suite.test.nested.value", 456)
+        self.assertEqual(config.get("benchmark_suite.test.nested.value"), 456)
 
 class BenchmarkDataTest(BenchmarkTestCase):
     """Tests for BenchmarkData."""
@@ -55,18 +72,21 @@ class BenchmarkDataTest(BenchmarkTestCase):
     def test_benchmark_data_initialization(self):
         """Test benchmark data initialization."""
         benchmark_data = BenchmarkData(
-            benchmark_id="test_id",
-            tiers=["/test/tier1", "/test/tier2"],
-            duration=60,
-            block_sizes=["4k", "64k"],
-            patterns=["read", "write"]
+            data={
+                "tiers": ["/test/tier1", "/test/tier2"],
+                "duration": 60,
+                "block_sizes": ["4k", "64k"],
+                "patterns": ["read", "write"]
+            },
+            metadata={"benchmark_id": "test_id"}
         )
         
-        self.assertEqual(benchmark_data.benchmark_id, "test_id")
-        self.assertEqual(benchmark_data.tiers, ["/test/tier1", "/test/tier2"])
-        self.assertEqual(benchmark_data.duration, 60)
-        self.assertEqual(benchmark_data.block_sizes, ["4k", "64k"])
-        self.assertEqual(benchmark_data.patterns, ["read", "write"])
+        self.assertEqual(benchmark_data.id, "test_id")
+        self.assertIn("tiers", benchmark_data.data)
+        self.assertEqual(benchmark_data.data["tiers"], ["/test/tier1", "/test/tier2"])
+        self.assertEqual(benchmark_data.data["duration"], 60)
+        self.assertEqual(benchmark_data.data["block_sizes"], ["4k", "64k"])
+        self.assertEqual(benchmark_data.data["patterns"], ["read", "write"])
     
     def test_add_tier_result(self):
         """Test adding tier result."""

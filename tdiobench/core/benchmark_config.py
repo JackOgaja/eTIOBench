@@ -130,6 +130,30 @@ class BenchmarkConfig:
         
         return get_config_value(self._config, path, default)
     
+    def set(self, path: str, value: Any) -> None:
+        """
+        Set configuration value using dot notation path.
+        
+        Args:
+            path: Dot notation path (e.g., "benchmark_suite.core.safety.enabled")
+            value: Value to set
+        """
+        # Split the path into parts
+        parts = path.split('.')
+        current = self._config
+        
+        # Navigate to the parent of the target key
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        # Set the final value
+        current[parts[-1]] = value
+        
+        # Mark as not validated since we changed the config
+        self._validated = False
+
     def get_tier_config(self, tier_name: str) -> Dict[str, Any]:
         """
         Get configuration for a specific storage tier.
@@ -289,6 +313,19 @@ class BenchmarkConfig:
         return (f"BenchmarkConfig(validated={self._validated}, "
                 f"tiers={self.get_all_tier_names()}, "
                 f"profiles={self.get_all_profile_names()})")
+    
+    @classmethod
+    def from_file(cls, config_path: str) -> 'BenchmarkConfig':
+        """
+        Create BenchmarkConfig instance from a file.
+        
+        Args:
+            config_path: Path to configuration file
+            
+        Returns:
+            BenchmarkConfig instance
+        """
+        return cls(config_path=config_path)
 
 # Functions that don't depend on class definition can go here
 def create_benchmark_config(config_path: Optional[str] = None) -> BenchmarkConfig:
