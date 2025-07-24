@@ -130,14 +130,27 @@ python -m build
 
 ```bash
 # Run a quick, safe benchmark on a specific storage tier
-benchmark-suite run --tier /mnt/nvme --profile quick_scan
+python -m tdiobench.cli.commandline run --tiers /mnt/nvme --profile quick_scan
 ```
 
 ### With Custom Configuration
 
 ```bash
 # Run with a custom configuration file
-benchmark-suite run --config my_benchmark_config.json
+python -m tdiobench.cli.commandline --config my_benchmark_config.yaml run --tiers /storage
+```
+
+### 📖 Comprehensive Documentation
+
+For detailed usage instructions, advanced features, and best practices, see the **[User Guide](USER_GUIDE.md)** which covers:
+
+- Complete installation and setup instructions
+- All CLI commands and options
+- FIO-native time series data collection
+- Advanced analysis and reporting features
+- Production safety guidelines
+- Troubleshooting and best practices
+- Real-world usage examples and workflows
 ```
 
 ### View Results

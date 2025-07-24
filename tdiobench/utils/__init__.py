@@ -9,9 +9,10 @@ Date: 2025-06-26
 """
 
 from tdiobench.utils.data_processor import (
-    DataTransformer, DataNormalizer, DataAggregator, DataProcessor
+    DataAggregator,
+    DataNormalizer,
+    DataProcessor,
+    DataTransformer,
 )
 
-__all__ = [
-    'DataTransformer', 'DataNormalizer', 'DataAggregator', 'DataProcessor'
-]
+__all__ = ["DataTransformer", "DataNormalizer", "DataAggregator", "DataProcessor"]

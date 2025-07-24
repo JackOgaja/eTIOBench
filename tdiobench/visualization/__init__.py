@@ -8,9 +8,7 @@ Author: Jack Ogaja
 Date: 2025-06-26
 """
 
-from tdiobench.visualization.report_generator import ReportGenerator
 from tdiobench.visualization.chart_generator import ChartGenerator
+from tdiobench.visualization.report_generator import ReportGenerator
 
-__all__ = [
-    'ReportGenerator', 'ChartGenerator'
-]
+__all__ = ["ReportGenerator", "ChartGenerator"]
