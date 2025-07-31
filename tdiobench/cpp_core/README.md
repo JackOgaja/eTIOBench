@@ -60,14 +60,13 @@ cpp_core/
 
 ```bash
 cd cpp_core
-./build.sh --clean --install --benchmark
+./build.sh --clean --install
 ```
 
 This will:
 - Clean any previous builds
 - Configure and compile C++ modules
 - Install Python integration layer
-- Run performance benchmarks
 
 ### 2. Manual Build
 
@@ -249,7 +248,7 @@ print(f"Collected {len(result.data_points)} points")
 - **Cache-friendly** memory layouts
 - **Circular buffers** for real-time data collection
 
-## 🧪 Testing and Validation
+## Testing and Validation
 
 ### Unit Tests
 ```bash
@@ -300,7 +299,7 @@ Config.set_fallback_enabled(True)   # Enable automatic fallback
 Config.enable_performance_logging(True)  # Log performance metrics
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -351,7 +350,7 @@ g++ -std=c++17 -x c++ -c /dev/null
 | DataProcessor | 180MB | 32MB | 82% |
 | TimeSeriesCollector | 120MB | 28MB | 77% |
 
-## 🚀 Migration Guide
+## Migration Guide
 
 ### Step 1: Install C++ Modules
 ```bash
