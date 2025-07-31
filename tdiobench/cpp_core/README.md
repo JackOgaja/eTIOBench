@@ -15,7 +15,10 @@ High-performance C++ implementations of eTIOBench core modules providing **15-50
 
 ```
 cpp_core/
-├── include/                    # C++ headers
+├── include/                         # C++ headers
+|   ├── common/                      # Shared utilities
+│   |   ├── simd_utils.hpp/.cpp      # SIMD optimizations
+│   |   └── threading_utils.hpp/.cpp # Threading utilities
 │   ├── statistical_analyzer.hpp
 │   ├── data_processor.hpp
 │   ├── time_series_collector.hpp
@@ -24,9 +27,6 @@ cpp_core/
 │   ├── statistical_analyzer.cpp
 │   ├── data_processor.cpp
 │   └── time_series_collector.cpp
-├── common/                    # Shared utilities
-│   ├── simd_utils.hpp/.cpp    # SIMD optimizations
-│   └── threading_utils.hpp/.cpp # Threading utilities
 ├── python_bindings/           # Python integration
 │   ├── module.cpp             # Main pybind11 module
 │   ├── statistical_analyzer_binding.cpp
