@@ -1,7 +1,7 @@
 {
   "benchmark_suite": {
     "metadata": {
-      "created_by": "Jack Ogaja",
+      "created_by": "eTIOBench Development Team",
       "created_at": "2025-06-26",
       "description": "Production-safe benchmarking with minimal impact",
       "version": "1.0.0"

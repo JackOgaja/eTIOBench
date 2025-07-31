@@ -1,0 +1,166 @@
+cmake_minimum_required(VERSION 3.16)
+project(eTIOBench_Core VERSION 1.0.0 LANGUAGES CXX)
+
+# C++ Standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Compiler-specific flags with architecture detection
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
+    
+    # Architecture-specific optimizations
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        # x86_64 specific optimizations
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
+        
+        # Check for AVX2 support
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+        if(COMPILER_SUPPORTS_AVX2)
+            set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx2 -mfma")
+            set(ENABLE_AVX2_FLAG TRUE)
+        endif()
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+        # ARM64 specific optimizations (Apple Silicon, etc.)
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mcpu=native")
+        set(ENABLE_NEON_FLAG TRUE)
+    endif()
+    
+    # OpenMP SIMD support (if available)
+    if(OpenMP_CXX_FOUND)
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fopenmp-simd")
+    endif()
+endif()
+
+# Debug: Print source files
+message(STATUS "Source files: ${SOURCES}")
+foreach(source ${SOURCES})
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source})
+        message(STATUS "Found: ${source}")
+    else()
+        message(WARNING "Missing: ${source}")
+    endif()
+endforeach()
+
+# Create static library
+add_library(etiobench_core STATIC ${SOURCES})
+
+# Set architecture-specific definitions
+if(ENABLE_AVX2_FLAG)
+    target_compile_definitions(etiobench_core PUBLIC ENABLE_AVX2)
+endif()
+if(ENABLE_NEON_FLAG)
+    target_compile_definitions(etiobench_core PUBLIC ENABLE_NEON)
+endif()
+
+# Find dependencies
+find_package(OpenMP)
+find_package(Threads REQUIRED)
+
+# Optional dependencies
+find_package(pybind11 QUIET)
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# Source files
+set(SOURCES
+    src/statistical_analyzer.cpp
+    src/data_processor.cpp
+    src/time_series_collector.cpp
+    common/simd_utils.cpp
+    common/threading_utils.cpp
+)
+
+# Debug: Print source files
+message(STATUS "Source files: ${SOURCES}")
+foreach(source ${SOURCES})
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source})
+        message(STATUS "Found: ${source}")
+    else()
+        message(WARNING "Missing: ${source}")
+    endif()
+endforeach()
+
+# Create static library
+add_library(etiobench_core STATIC ${SOURCES})
+
+# Link libraries
+target_link_libraries(etiobench_core 
+    PUBLIC 
+        Threads::Threads
+)
+
+# Link OpenMP if available
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(etiobench_core PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_definitions(etiobench_core PUBLIC ENABLE_OPENMP)
+    message(STATUS "OpenMP found - parallel processing enabled")
+else()
+    message(WARNING "OpenMP not found - parallel processing will be limited")
+    target_compile_definitions(etiobench_core PUBLIC DISABLE_OPENMP)
+endif()
+
+# Compiler-specific options
+target_compile_options(etiobench_core PRIVATE
+    $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
+# Export include directory
+target_include_directories(etiobench_core 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+# Python bindings (optional)
+if(pybind11_FOUND)
+    add_subdirectory(python_bindings)
+endif()
+
+# Tests (TODO: Implement comprehensive test suite)
+# enable_testing()
+# add_subdirectory(tests)
+
+# Installation
+install(TARGETS etiobench_core
+    EXPORT eTIOBenchCoreTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+install(DIRECTORY include/
+    DESTINATION include
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
+# Export targets
+install(EXPORT eTIOBenchCoreTargets
+    FILE eTIOBenchCoreTargets.cmake
+    NAMESPACE eTIOBench::
+    DESTINATION lib/cmake/eTIOBenchCore
+)
+
+# Config file
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    eTIOBenchCoreConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/eTIOBenchCoreConfigVersion.cmake
+    DESTINATION lib/cmake/eTIOBenchCore
+)

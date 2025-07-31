@@ -8,12 +8,11 @@ Author: Jack Ogaja
 Date: 2025-06-26
 """
 
-from tdiobench.collection.time_series_collector import (
-    TimeSeriesCollector, TimeSeriesConfig, TimeSeriesBuffer
-)
 from tdiobench.collection.system_metrics_collector import SystemMetricsCollector
+from tdiobench.collection.time_series_collector import (
+    TimeSeriesBuffer,
+    TimeSeriesCollector,
+    TimeSeriesConfig,
+)
 
-__all__ = [
-    'TimeSeriesCollector', 'TimeSeriesConfig', 'TimeSeriesBuffer',
-    'SystemMetricsCollector'
-]
+__all__ = ["TimeSeriesCollector", "TimeSeriesConfig", "TimeSeriesBuffer", "SystemMetricsCollector"]

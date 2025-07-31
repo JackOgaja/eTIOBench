@@ -10,17 +10,26 @@ Date: 2025-06-26
 Version: 2.0.0
 """
 
-# Import core modules for easier access
-from tdiobench.core.benchmark_suite import BenchmarkSuite, BenchmarkEvent
+from tdiobench.core.benchmark_analysis import AnalysisResult
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkData, BenchmarkResult, TimeSeriesData
-from tdiobench.core.benchmark_analysis import AnalysisResult
 from tdiobench.core.benchmark_exceptions import (
-    BenchmarkError, BenchmarkConfigError, BenchmarkExecutionError,
-    BenchmarkResourceError, BenchmarkDataError, BenchmarkAnalysisError,
-    BenchmarkReportError, BenchmarkAPIError, BenchmarkNetworkError,
-    BenchmarkTimeoutError, BenchmarkAuthenticationError, BenchmarkStorageError
+    BenchmarkAnalysisError,
+    BenchmarkAPIError,
+    BenchmarkAuthenticationError,
+    BenchmarkConfigError,
+    BenchmarkDataError,
+    BenchmarkError,
+    BenchmarkExecutionError,
+    BenchmarkNetworkError,
+    BenchmarkReportError,
+    BenchmarkResourceError,
+    BenchmarkStorageError,
+    BenchmarkTimeoutError,
 )
+
+# Import core modules for easier access
+from tdiobench.core.benchmark_suite import BenchmarkEvent, BenchmarkSuite
 
 # Define version information
 __version__ = "2.0.0"
@@ -29,10 +38,23 @@ __email__ = "jogaja@acm.org"
 __license__ = "MIT"
 
 __all__ = [
-    'BenchmarkSuite', 'BenchmarkEvent', 'BenchmarkConfig',
-    'BenchmarkData', 'BenchmarkResult', 'TimeSeriesData', 'AnalysisResult',
-    'BenchmarkError', 'BenchmarkConfigError', 'BenchmarkExecutionError',
-    'BenchmarkResourceError', 'BenchmarkDataError', 'BenchmarkAnalysisError',
-    'BenchmarkReportError', 'BenchmarkAPIError', 'BenchmarkNetworkError',
-    'BenchmarkTimeoutError', 'BenchmarkAuthenticationError', 'BenchmarkStorageError'
+    "BenchmarkSuite",
+    "BenchmarkEvent",
+    "BenchmarkConfig",
+    "BenchmarkData",
+    "BenchmarkResult",
+    "TimeSeriesData",
+    "AnalysisResult",
+    "BenchmarkError",
+    "BenchmarkConfigError",
+    "BenchmarkExecutionError",
+    "BenchmarkResourceError",
+    "BenchmarkDataError",
+    "BenchmarkAnalysisError",
+    "BenchmarkReportError",
+    "BenchmarkAPIError",
+    "BenchmarkNetworkError",
+    "BenchmarkTimeoutError",
+    "BenchmarkAuthenticationError",
+    "BenchmarkStorageError",
 ]

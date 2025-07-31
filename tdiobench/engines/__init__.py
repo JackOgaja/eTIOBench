@@ -10,4 +10,4 @@ Date: 2025-06-26
 
 from tdiobench.engines.fio_engine import FIOEngine
 
-__all__ = ['FIOEngine']
+__all__ = ["FIOEngine"]

@@ -9,12 +9,9 @@ Author: Jack Ogaja
 Date: 2025-06-26
 """
 
-from tdiobench.analysis.statistical_analyzer import StatisticalAnalyzer
-from tdiobench.analysis.network_analyzer import NetworkAnalyzer
-from tdiobench.analysis.time_series_analyzer import TimeSeriesAnalyzer
 from tdiobench.analysis.anomaly_detector import AnomalyDetector
+from tdiobench.analysis.network_analyzer import NetworkAnalyzer
+from tdiobench.analysis.statistical_analyzer import StatisticalAnalyzer
+from tdiobench.analysis.time_series_analyzer import TimeSeriesAnalyzer
 
-__all__ = [
-    'StatisticalAnalyzer', 'NetworkAnalyzer', 
-    'TimeSeriesAnalyzer', 'AnomalyDetector'
-]
+__all__ = ["StatisticalAnalyzer", "NetworkAnalyzer", "TimeSeriesAnalyzer", "AnomalyDetector"]

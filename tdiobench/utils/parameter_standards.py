@@ -9,9 +9,9 @@ Author: Jack Ogaja
 Date: 2025-06-26
 """
 
-import inspect
 import functools
-from typing import Dict, List, Any, Optional, Callable, get_type_hints
+import inspect
+from typing import Callable, List
 
 # Standard parameter names and descriptions
 STANDARD_PARAMETERS = {
@@ -40,7 +40,7 @@ STANDARD_PARAMETERS = {
     "config": "Benchmark configuration",
     "aggregation_function": "Function for data aggregation",
     "window_size": "Window size for moving average",
-    "interval": "Collection interval in seconds"
+    "interval": "Collection interval in seconds",
 }
 
 # Parameter type mappings
@@ -65,7 +65,7 @@ PARAMETER_TYPES = {
     "report_title": str,
     "aggregation_function": str,
     "window_size": int,
-    "interval": float
+    "interval": float,
 }
 
 # Parameter alias mappings
@@ -82,40 +82,43 @@ PARAMETER_ALIASES = {
     "output_directory": "output_dir",
     "format_list": "formats",
     "title": "report_title",
-    "window": "window_size"
+    "window": "window_size",
 }
+
 
 def standardize_parameter_name(old_name: str) -> str:
     """
     Standardize parameter name according to conventions.
-    
+
     Args:
         old_name: Original parameter name
-        
+
     Returns:
         Standardized parameter name
     """
     # Check if name is already standardized
     if old_name in STANDARD_PARAMETERS:
         return old_name
-    
+
     # Check if name is an alias
     if old_name in PARAMETER_ALIASES:
         return PARAMETER_ALIASES[old_name]
-    
+
     # No standardization found, return original
     return old_name
+
 
 def standardize_parameters(func: Callable) -> Callable:
     """
     Decorator to standardize parameter names in function signatures.
-    
+
     Args:
         func: Function to decorate
-        
+
     Returns:
         Decorated function with standardized parameter names
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # Map aliases to standard names
@@ -123,19 +126,20 @@ def standardize_parameters(func: Callable) -> Callable:
         for name, value in kwargs.items():
             standard_name = standardize_parameter_name(name)
             standardized_kwargs[standard_name] = value
-        
+
         # Call function with standardized parameters
         return func(*args, **standardized_kwargs)
-    
+
     return wrapper
+
 
 def update_docstring_parameters(func: Callable) -> Callable:
     """
     Update function docstring with standardized parameter descriptions.
-    
+
     Args:
         func: Function to update
-        
+
     Returns:
         Function with updated docstring
     """
@@ -143,44 +147,46 @@ def update_docstring_parameters(func: Callable) -> Callable:
     doc = func.__doc__
     if not doc:
         return func
-    
+
     # Get parameter names
     sig = inspect.signature(func)
-    
+
     # Update parameter descriptions
     updated_params = []
     for param_name in sig.parameters:
         # Skip self and cls parameters
-        if param_name in ('self', 'cls'):
+        if param_name in ("self", "cls"):
             continue
-        
+
         # Standardize parameter name
         standard_name = standardize_parameter_name(param_name)
-        
+
         # Get description from standard parameters
         description = STANDARD_PARAMETERS.get(standard_name, f"Description of {param_name}")
-        
+
         # Add parameter to updated list
         updated_params.append(f"        {param_name}: {description}")
-    
+
     # Replace Args section with updated parameters
     import re
-    args_pattern = r'(\s+Args:\s+)([^\n]+\s+)+?(\s+Returns:|\s+Raises:|\s+Example:|\s+\w+:|\s*$)'
-    replacement = r'\1' + '\n'.join(updated_params) + r'\3'
+
+    args_pattern = r"(\s+Args:\s+)([^\n]+\s+)+?(\s+Returns:|\s+Raises:|\s+Example:|\s+\w+:|\s*$)"
+    replacement = r"\1" + "\n".join(updated_params) + r"\3"
     updated_doc = re.sub(args_pattern, replacement, doc, flags=re.DOTALL)
-    
+
     # Update function docstring
     func.__doc__ = updated_doc
-    
+
     return func
+
 
 def standard_parameters(func: Callable) -> Callable:
     """
     Combined decorator to standardize parameters and update docstring.
-    
+
     Args:
         func: Function to decorate
-        
+
     Returns:
         Decorated function with standardized parameters and updated docstring
     """

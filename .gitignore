@@ -47,3 +47,13 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Development and testing files
+test_*.py
+scripts/test_*.py
+cpp_core/
+c_extensions/
+performance_analysis/
+*_ANALYSIS*.md
+charts/
+*.json
+codebase_*.py
