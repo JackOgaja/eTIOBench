@@ -24,7 +24,15 @@ from scipy import stats
 from tdiobench.analysis.base_analyzer import BaseAnalyzer
 from tdiobench.core.benchmark_analysis import AnalysisResult
 
-logger = logging.getLogger(__name__)
+# Import C++ integration for enhanced performance
+try:
+    from tdiobench.cpp_integration import CppIntegrationConfig, CppNetworkAnalyzer, CPP_AVAILABLE
+    logger = logging.getLogger(__name__)
+    logger.info(f"C++ integration available for network analysis: {CPP_AVAILABLE}")
+except ImportError as e:
+    CPP_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.info("C++ integration not available for network analysis, using Python implementations")
 
 
 class NetworkAnalyzer(BaseAnalyzer):
@@ -58,6 +66,18 @@ class NetworkAnalyzer(BaseAnalyzer):
 
         # Correlation settings
         self.correlation_threshold = self.network_config.get("correlation_threshold", 0.7)
+        
+        # Initialize C++ integration if available
+        if CPP_AVAILABLE:
+            cpp_config = CppIntegrationConfig(
+                use_cpp=self.network_config.get("use_cpp", True),
+                min_data_size_for_cpp=self.network_config.get("min_data_size_for_cpp", 100)
+            )
+            self.cpp_analyzer = CppNetworkAnalyzer(cpp_config)
+            logger.info("C++ network analyzer initialized for enhanced performance")
+        else:
+            self.cpp_analyzer = None
+            logger.info("Using Python implementation for network analysis")
 
         logger.debug(
             f"Initialized NetworkAnalyzer with interface_monitoring={self.interface_monitoring}"
@@ -117,56 +137,96 @@ class NetworkAnalyzer(BaseAnalyzer):
             storage_metrics = [m for m in storage_metrics if m in df.columns]
 
         # Identify network metrics in the data
-        network_metrics = self._identify_network_metrics(data)
+        network_metrics = self._identify_network_metrics(df)
 
         if not network_metrics:
             logger.warning("No network metrics found in the dataset")
-            return AnalysisResult(
-                name="network_analysis",
-                status="skipped",
-                data={"reason": "No network metrics found in the dataset"},
+            result = AnalysisResult(
+                analysis_type="network_analysis",
+                benchmark_id=data.id if hasattr(data, "id") else "unknown"
             )
+            result.add_overall_result("skipped", "No network metrics found in the dataset")
+            return result
 
         logger.info(f"Analyzing network metrics: {network_metrics}")
 
         try:
+            # Use C++ acceleration for large datasets if available
+            if (self.cpp_analyzer and 
+                CPP_AVAILABLE and 
+                not df.empty and 
+                len(df) >= 100):
+                
+                logger.info("🚀 Using C++ acceleration for network analysis")
+                network_data = {
+                    'dataframe': df,
+                    'network_metrics': network_metrics,
+                    'storage_metrics': storage_metrics,
+                    'timestamps': df.index.tolist() if hasattr(df.index, 'tolist') else []
+                }
+                
+                try:
+                    cpp_results = self.cpp_analyzer.analyze_network_metrics(network_data)
+                    if cpp_results.get('analysis_method') != 'python_fallback':
+                        logger.info("✅ C++ network analysis completed successfully")
+                        return AnalysisResult(
+                            analysis_type="network_analysis",
+                            benchmark_id=data.id if hasattr(data, "id") else "unknown",
+                            timestamp=datetime.now().isoformat(),
+                            data=cpp_results
+                        )
+                except Exception as e:
+                    logger.warning(f"C++ network analysis failed, falling back to Python: {e}")
+            
+            logger.debug("Using Python implementation for network analysis")
+            
             # Run multiple network analyses
             results = {}
 
             # Basic network statistics
-            results["statistics"] = self._calculate_network_statistics(data, network_metrics)
+            results["statistics"] = self._calculate_network_statistics(df, network_metrics)
 
             # Interface utilization analysis
             if self.interface_monitoring:
                 results["interface_utilization"] = self._analyze_interface_utilization(
-                    data, network_metrics
+                    df, network_metrics
                 )
 
             # Network protocol detection
             if self.detect_protocol:
-                results["protocol_analysis"] = self._analyze_protocols(data, network_metrics)
+                results["protocol_analysis"] = self._analyze_protocols(df, network_metrics)
 
             # Network-storage correlation
             if storage_metrics:
                 results["correlation"] = self._analyze_network_storage_correlation(
-                    data, network_metrics, storage_metrics
+                    df, network_metrics, storage_metrics
                 )
 
             # Network bottleneck detection
-            results["bottlenecks"] = self._detect_network_bottlenecks(data, network_metrics)
+            results["bottlenecks"] = self._detect_network_bottlenecks(df, network_metrics)
 
             # Packet analysis if available
-            if self.packet_capture and any(col.startswith("packet_") for col in data.columns):
-                results["packet_analysis"] = self._analyze_packet_metrics(data)
+            if self.packet_capture and any(col.startswith("packet_") for col in df.columns):
+                results["packet_analysis"] = self._analyze_packet_metrics(df)
 
             # Generate overall summary
             results["summary"] = self._generate_network_summary(results)
 
-            return AnalysisResult(name="network_analysis", status="success", data=results)
+            analysis_result = AnalysisResult(
+                analysis_type="network_analysis",
+                benchmark_id=data.id if hasattr(data, "id") else "unknown"
+            )
+            analysis_result.add_overall_result("success", results)
+            return analysis_result
 
         except Exception as e:
             logger.exception(f"Error during network analysis: {str(e)}")
-            return AnalysisResult(name="network_analysis", status="error", data={"error": str(e)})
+            error_result = AnalysisResult(
+                analysis_type="network_analysis",
+                benchmark_id=data.id if hasattr(data, "id") else "unknown"
+            )
+            error_result.add_overall_result("error", {"error": str(e)})
+            return error_result
 
     def _identify_network_metrics(self, data: pd.DataFrame) -> List[str]:
         """
@@ -457,21 +517,29 @@ class NetworkAnalyzer(BaseAnalyzer):
                 # Calculate Pearson correlation coefficient
                 corr, p_value = stats.pearsonr(valid_data[net_metric], valid_data[storage_metric])
 
+                # Convert numpy scalars to Python floats safely
+                try:
+                    corr_float = float(np.asarray(corr).item()) if hasattr(corr, '__len__') else float(corr)
+                    p_value_float = float(np.asarray(p_value).item()) if hasattr(p_value, '__len__') else float(p_value)
+                except (ValueError, TypeError):
+                    corr_float = float(corr) if np.isscalar(corr) else 0.0
+                    p_value_float = float(p_value) if np.isscalar(p_value) else 1.0
+
                 correlation_result["correlation_matrix"][net_metric][storage_metric] = {
-                    "coefficient": float(corr),
-                    "p_value": float(p_value),
-                    "significant": p_value < 0.05,
+                    "coefficient": corr_float,
+                    "p_value": p_value_float,
+                    "significant": p_value_float < 0.05,
                 }
 
                 # Identify strong correlations
-                if abs(corr) > self.correlation_threshold and p_value < 0.05:
+                if abs(corr_float) > self.correlation_threshold and p_value_float < 0.05:
                     correlation_result["strong_correlations"].append(
                         {
                             "network_metric": net_metric,
                             "storage_metric": storage_metric,
-                            "coefficient": float(corr),
-                            "p_value": float(p_value),
-                            "relationship": "positive" if corr > 0 else "negative",
+                            "coefficient": corr_float,
+                            "p_value": p_value_float,
+                            "relationship": "positive" if corr_float > 0 else "negative",
                         }
                     )
 

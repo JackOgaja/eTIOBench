@@ -16,11 +16,28 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkResult
 from tdiobench.core.benchmark_exceptions import BenchmarkReportError
 
 logger = logging.getLogger("tdiobench.visualization.report")
+
+
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+    
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 
 class ReportGenerator:
@@ -235,7 +252,7 @@ class ReportGenerator:
 
             # Write JSON report
             with open(output_path, "w") as f:
-                json.dump(result_dict, f, indent=2)
+                json.dump(result_dict, f, indent=2, cls=NumpyJSONEncoder)
 
             return output_path
 

@@ -18,7 +18,15 @@ from typing import Any, Dict, List, Optional, Union
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_exceptions import BenchmarkDataError
 
-logger = logging.getLogger("tdiobench.time_series")
+# Import C++ integration for enhanced performance
+try:
+    from tdiobench.cpp_integration import CppIntegrationConfig, CppTimeSeriesCollector, CPP_AVAILABLE
+    logger = logging.getLogger("tdiobench.time_series")
+    logger.info(f"C++ integration available for time series collection: {CPP_AVAILABLE}")
+except ImportError as e:
+    CPP_AVAILABLE = False
+    logger = logging.getLogger("tdiobench.time_series")
+    logger.info("C++ integration not available for time series collection, using Python implementations")
 
 
 class TimeSeriesData:
@@ -244,6 +252,20 @@ class TimeSeriesCollector:
         self.db_connection: Optional[sqlite3.Connection] = None
         self.fio_callback_data: List[tuple] = []  # Store (timestamp, data_point) tuples
 
+        # Initialize C++ integration if available
+        if CPP_AVAILABLE:
+            cpp_config = CppIntegrationConfig(
+                use_cpp=True,
+                min_data_size_for_cpp=100,
+                enable_parallel=True,
+                num_threads=4
+            )
+            self.cpp_collector = CppTimeSeriesCollector(cpp_config)
+            logger.info("C++ time series collector initialized for enhanced performance")
+        else:
+            self.cpp_collector = None
+            logger.info("Using Python implementation for time series collection")
+
         # Initialize database if path provided
         if self.config.db_path:
             self._init_database()
@@ -293,6 +315,24 @@ class TimeSeriesCollector:
         """
         if self.collection_active and self.time_series_data:
             timestamp = time.time()
+            
+            # Use C++ acceleration for high-frequency data processing if available
+            if (self.cpp_collector and 
+                CPP_AVAILABLE and 
+                len(self.fio_callback_data) >= 50):  # Batch process every 50 points
+                
+                try:
+                    # Process batch with C++ acceleration
+                    batch_data = {
+                        'timestamp': timestamp,
+                        'data_point': data_point,
+                        'batch_size': len(self.fio_callback_data)
+                    }
+                    self.cpp_collector.process_data_batch(batch_data)
+                    logger.debug("🚀 C++ acceleration used for time series data processing")
+                except Exception as e:
+                    logger.debug(f"C++ data processing failed, using Python fallback: {e}")
+            
             self.fio_callback_data.append((timestamp, data_point))
             
             # Add to time series data

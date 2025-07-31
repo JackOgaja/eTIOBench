@@ -179,8 +179,19 @@ class BenchmarkSuite:
             )
 
             # Start system metrics collection
-            if self.config.get("collection.system_metrics.enabled", True):
-                self.system_metrics_collector.start_collection(benchmark_data)
+            system_metrics_enabled = self.config.get("collection.system_metrics.enabled", True)
+            logger.info(f"System metrics configuration check: enabled={system_metrics_enabled}")
+            if system_metrics_enabled:
+                try:
+                    logger.info("Starting system metrics collection...")
+                    self.system_metrics_collector.start_collection(benchmark_data)
+                    logger.info("✅ System metrics collection started successfully")
+                except Exception as e:
+                    logger.error(f"❌ Failed to start system metrics collection: {e}")
+                    import traceback
+                    logger.debug(f"System metrics collection error traceback: {traceback.format_exc()}")
+            else:
+                logger.info("System metrics collection is disabled")
 
             # Execute benchmarks for each tier
             for tier in tiers:
@@ -200,8 +211,15 @@ class BenchmarkSuite:
 
             # Stop system metrics collection
             if self.config.get("collection.system_metrics.enabled", True):
-                system_metrics = self.system_metrics_collector.stop_collection()
-                benchmark_data.set_system_metrics(system_metrics)
+                try:
+                    logger.info("Stopping system metrics collection...")
+                    system_metrics = self.system_metrics_collector.stop_collection()
+                    benchmark_data.set_system_metrics(system_metrics)
+                    logger.info(f"✅ System metrics collection stopped, collected {len(system_metrics.get('timestamps', []))} data points")
+                except Exception as e:
+                    logger.error(f"❌ Failed to stop system metrics collection: {e}")
+                    import traceback
+                    logger.debug(f"System metrics stop error traceback: {traceback.format_exc()}")
 
             # Perform analysis
             benchmark_result = self._analyze_benchmark_data(benchmark_data, enable_all_modules)
@@ -517,10 +535,13 @@ class BenchmarkSuite:
                 )
 
                 # Execute benchmark
+                per_test_duration = duration // (len(block_sizes) * len(patterns))
+                # Ensure minimum duration per test
+                per_test_duration = max(per_test_duration, 30)
+                
                 result = self.run_benchmark(
                     tier=tier,
-                    duration=duration
-                    // (len(block_sizes) * len(patterns)),  # Divide duration across tests
+                    duration=per_test_duration,
                     block_size=block_size,
                     pattern=pattern,
                     **kwargs,
@@ -538,7 +559,18 @@ class BenchmarkSuite:
         # Stop time series collection if enabled
         if self.config.get("collection.time_series.enabled", False):
             time_series_data = self.time_series_collector.stop_collection()
-            tier_results["time_series"] = time_series_data
+            # Convert TimeSeriesData object to list format expected by analysis
+            if time_series_data and time_series_data.timestamps:
+                time_series_list = []
+                for i, timestamp in enumerate(time_series_data.timestamps):
+                    data_point = {"timestamp": timestamp}
+                    for metric in time_series_data.metrics:
+                        if i < len(time_series_data.data[metric]):
+                            data_point[metric] = time_series_data.data[metric][i]
+                    time_series_list.append(data_point)
+                tier_results["time_series"] = time_series_list
+            else:
+                tier_results["time_series"] = []
 
         # Calculate tier summary
         tier_results["summary"] = self._calculate_tier_summary(tier_results["tests"])
@@ -564,13 +596,18 @@ class BenchmarkSuite:
         benchmark_result = BenchmarkResult.from_benchmark_data(benchmark_data)
 
         # Statistical analysis
-        if enable_all_modules or self.config.get("analysis.statistics.enabled", False):
+        statistical_enabled = self.config.get("benchmark_suite.analysis.statistical.enabled", False)
+        logger.info(f"Statistical analysis enabled: {statistical_enabled} (enable_all: {enable_all_modules})")
+        
+        if enable_all_modules or statistical_enabled:
             logger.info("Performing statistical analysis")
             stats_results = self.statistical_analyzer.analyze_dataset(benchmark_data)
             benchmark_result.add_analysis_results("statistics", stats_results)
+        else:
+            logger.info("Statistical analysis SKIPPED - not enabled in configuration")
 
         # Time series analysis
-        if enable_all_modules or self.config.get("analysis.time_series.enabled", False):
+        if enable_all_modules or self.config.get("benchmark_suite.analysis.time_series.enabled", False):
             if benchmark_data.has_time_series_data():
                 logger.info("Performing time series analysis")
                 ts_results = self.time_series_analyzer.analyze_time_series(benchmark_data)
@@ -588,17 +625,30 @@ class BenchmarkSuite:
                     benchmark_result.add_analysis_results("time_series", ts_results)
 
         # Network impact analysis
-        if enable_all_modules or self.config.get("analysis.network.enabled", False):
+        if enable_all_modules or self.config.get("benchmark_suite.analysis.network.enabled", False):
             logger.info("Performing network impact analysis")
             # JO+ network_results = self.network_analyzer.analyze_network_impact(benchmark_data)
             network_results = self.network_analyzer.analyze_network_metrics(benchmark_data)
             benchmark_result.add_analysis_results("network", network_results)
 
         # Anomaly detection
-        if enable_all_modules or self.config.get("analysis.anomaly_detection.enabled", False):
+        if enable_all_modules or self.config.get("benchmark_suite.analysis.anomaly_detection.enabled", False):
             if benchmark_data.has_time_series_data():
                 logger.info("Performing anomaly detection")
-                anomaly_results = self.anomaly_detector.detect_anomalies(benchmark_data)
+                # Convert BenchmarkData to DataFrame for anomaly detection
+                time_series_data = benchmark_data.get_time_series_data()
+                if hasattr(time_series_data, 'get_dataframe'):
+                    df = time_series_data.get_dataframe()
+                    anomaly_results = self.anomaly_detector.detect_anomalies(df)
+                else:
+                    # Fallback if no time series dataframe available
+                    logger.warning("No time series dataframe available for anomaly detection")
+                    anomaly_results = AnalysisResult(
+                        analysis_type="anomaly_detection",
+                        benchmark_id=benchmark_data.benchmark_id
+                    )
+                    anomaly_results.add_overall_result("status", "skipped")
+                    anomaly_results.add_overall_result("reason", "No time series dataframe available")
                 benchmark_result.add_analysis_results("anomalies", anomaly_results)
             else:
                 # For tests, ensure we have an anomalies entry if this is enabled but no data

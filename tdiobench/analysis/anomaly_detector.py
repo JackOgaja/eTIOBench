@@ -77,28 +77,35 @@ class AnomalyDetector(BaseAnalyzer):
         """
         if not self.enabled:
             logger.info("Anomaly detection disabled in config")
-            return AnalysisResult(
-                name="anomaly_detection",
-                status="skipped",
-                data={"reason": "Anomaly detection disabled in configuration"},
+            result = AnalysisResult(
+                analysis_type="anomaly_detection",
+                benchmark_id="unknown"
             )
+            result.add_overall_result("status", "skipped")
+            result.add_overall_result("reason", "Anomaly detection disabled in configuration")
+            return result
 
         if data.empty:
             logger.warning("Cannot detect anomalies in empty dataset")
-            return AnalysisResult(
-                name="anomaly_detection", status="error", data={"error": "Empty dataset provided"}
+            result = AnalysisResult(
+                analysis_type="anomaly_detection",
+                benchmark_id="unknown"
             )
+            result.add_overall_result("status", "error")
+            result.add_overall_result("error", "Empty dataset provided")
+            return result
 
         if len(data) < self.min_data_points:
             logger.warning(
                 f"Insufficient data points for anomaly detection: "
                 f"{len(data)} < {self.min_data_points}"
             )
-            return AnalysisResult(
-                name="anomaly_detection",
-                status="skipped",
-                data={"reason": f"Insufficient data points: {len(data)} < {self.min_data_points}"},
+            result = AnalysisResult(
+                analysis_type="anomaly_detection",
+                benchmark_id="unknown"
             )
+            result.add_overall_result("skipped", f"Insufficient data points: {len(data)} < {self.min_data_points}")
+            return result
 
         # Use default metrics if none provided
         if metrics is None:
@@ -127,11 +134,21 @@ class AnomalyDetector(BaseAnalyzer):
                 contextual_result = self._detect_contextual_anomalies(data, metrics)
                 result["contextual_anomalies"] = contextual_result
 
-            return AnalysisResult(name="anomaly_detection", status="success", data=result)
+            analysis_result = AnalysisResult(
+                analysis_type="anomaly_detection",
+                benchmark_id="unknown"
+            )
+            analysis_result.add_overall_result("success", result)
+            return analysis_result
 
         except Exception as e:
             logger.exception(f"Error during anomaly detection: {str(e)}")
-            return AnalysisResult(name="anomaly_detection", status="error", data={"error": str(e)})
+            error_result = AnalysisResult(
+                analysis_type="anomaly_detection",
+                benchmark_id="unknown"
+            )
+            error_result.add_overall_result("error", {"error": str(e)})
+            return error_result
 
     def _detect_zscore_anomalies(self, data: pd.DataFrame, metrics: List[str]) -> Dict[str, Any]:
         """
@@ -180,9 +197,9 @@ class AnomalyDetector(BaseAnalyzer):
                     "anomaly_timestamps": timestamps,
                     "anomaly_values": anomalies.tolist(),
                     "z_scores": z_scores[anomalies_idx].tolist(),
-                    "threshold": self.threshold,
-                    "mean": series.mean(),
-                    "std": series.std(),
+                    "threshold": float(self.threshold),
+                    "mean": float(series.mean()),
+                    "std": float(series.std()),
                 }
 
         return {

@@ -192,7 +192,7 @@ def cli(ctx, config, log_level, output_dir):
     "--ts-interval", type=float, default=1.0, help="Time series collection interval in seconds"
 )
 @click.option(
-    "--system-metrics", is_flag=True, default=True, help="Enable system metrics collection"
+    "--system-metrics", is_flag=True, default=False, help="Enable system metrics collection"
 )
 @click.option(
     "--sm-interval", type=float, default=5.0, help="System metrics collection interval in seconds"

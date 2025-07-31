@@ -45,6 +45,9 @@ benchmark_suite:
     tier_optimized:
       description: "Workload optimized for each tier type"
       duration_seconds: 120
+      block_sizes: ["4k", "64k", "1m"]
+      patterns: ["read", "write", "randread", "randwrite"]
+      direct: true
       custom_tier_params:
         nvme:
           block_sizes: ["4k", "16k"]
@@ -58,8 +61,6 @@ benchmark_suite:
           block_sizes: ["64k", "1m"]
           io_depth: 16
           numjobs: 2
-      patterns: ["read", "write", "randread", "randwrite"]
-      direct: true
   
   execution:
     engine: "fio"
@@ -70,6 +71,9 @@ benchmark_suite:
     comparative:
       enabled: true
       min_performance_difference_percent: 5
+    
+    statistical:
+      enabled: true
     
     time_series:
       enabled: true

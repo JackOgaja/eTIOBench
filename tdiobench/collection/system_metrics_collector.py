@@ -21,7 +21,15 @@ from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkData
 from tdiobench.core.benchmark_exceptions import BenchmarkDataError
 
-logger = logging.getLogger("tdiobench.system_metrics")
+# Import C++ integration for enhanced performance
+try:
+    from tdiobench.cpp_integration import CppIntegrationConfig, CppSystemMetricsCollector, CPP_AVAILABLE
+    logger = logging.getLogger("tdiobench.system_metrics")
+    logger.info(f"C++ integration available for system metrics collection: {CPP_AVAILABLE}")
+except ImportError as e:
+    CPP_AVAILABLE = False
+    logger = logging.getLogger("tdiobench.system_metrics")
+    logger.info("C++ integration not available for system metrics collection, using Python implementations")
 
 
 class SystemMetricsCollector:
@@ -50,6 +58,20 @@ class SystemMetricsCollector:
             "disk": [],
             "network": [],
         }
+        
+        # Initialize C++ integration if available
+        if CPP_AVAILABLE:
+            cpp_config = CppIntegrationConfig(
+                use_cpp=config.get("benchmark_suite.collection.system_metrics.use_cpp", True),
+                min_data_size_for_cpp=10,
+                enable_parallel=True,
+                num_threads=2
+            )
+            self.cpp_collector = CppSystemMetricsCollector(cpp_config)
+            logger.info("C++ system metrics collector initialized for enhanced performance")
+        else:
+            self.cpp_collector = None
+            logger.info("Using Python implementation for system metrics collection")
 
     def start_collection(self, benchmark_data: BenchmarkData) -> None:
         """
@@ -204,41 +226,73 @@ class SystemMetricsCollector:
             try:
                 # Get current timestamp
                 current_time = time.time()
-                self.metrics_data["timestamps"].append(current_time)
+                
+                # Use C++ acceleration for system metrics collection if available
+                if (self.cpp_collector and 
+                    CPP_AVAILABLE and 
+                    len(self.metrics_data["timestamps"]) >= 5):  # After collecting a few samples
+                    
+                    try:
+                        cpp_metrics = self.cpp_collector.collect_system_metrics()
+                        if cpp_metrics.get('collection_method') != 'python_fallback':
+                            logger.debug("🚀 C++ acceleration used for system metrics collection")
+                            # Use C++ collected metrics
+                            self.metrics_data["timestamps"].append(current_time)
+                            self.metrics_data["cpu"].append(cpp_metrics.get('cpu_usage', 0.0))
+                            self.metrics_data["memory"].append(cpp_metrics.get('memory_usage', 0.0))
+                            # Continue with disk collection (C++ doesn't handle tiers yet)
+                        else:
+                            # Fallback to Python collection
+                            self._collect_metrics_python(current_time, tiers)
+                    except Exception as e:
+                        logger.debug(f"C++ metrics collection failed, using Python fallback: {e}")
+                        self._collect_metrics_python(current_time, tiers)
+                else:
+                    self._collect_metrics_python(current_time, tiers)
 
-                # Collect CPU usage
-                cpu_usage = self.get_current_cpu_usage()
-                self.metrics_data["cpu"].append(cpu_usage)
-
-                # Collect memory usage
-                memory_usage = self.get_current_memory_usage()
-                self.metrics_data["memory"].append(memory_usage)
-
-                # Collect disk usage for each tier
-                disk_data = {}
-                for tier in tiers:
-                    if os.path.exists(tier):
-                        total, used, free = self._get_disk_usage(tier)
-                        disk_data[tier] = {
-                            "total_bytes": total,
-                            "used_bytes": used,
-                            "free_bytes": free,
-                            "used_percent": (used / total * 100) if total > 0 else 0,
-                        }
-
-                self.metrics_data["disk"].append(disk_data)
-
-                # Collect network metrics if enabled
-                if self.config.get("collection.system_metrics.network.enabled", False):
-                    network_data = self._get_network_metrics()
-                    self.metrics_data["network"].append(network_data)
-
-                # Sleep until next collection
-                time.sleep(self.collection_interval)
+                # Add data to benchmark data
+                benchmark_data.add_series_data(current_time, {
+                    "cpu_usage": self.metrics_data["cpu"][-1],
+                    "memory_usage": self.metrics_data["memory"][-1],
+                    "disk_usage": self.metrics_data["disk"][-1] if self.metrics_data["disk"] else {}
+                })
 
             except Exception as e:
-                logger.error(f"Error in system metrics collection: {str(e)}")
-                time.sleep(self.collection_interval)
+                logger.warning(f"Failed to collect system metrics: {e}")
+
+            # Sleep until next collection
+            time.sleep(self.collection_interval)
+    
+    def _collect_metrics_python(self, current_time: float, tiers: list) -> None:
+        """Python fallback for metrics collection."""
+        self.metrics_data["timestamps"].append(current_time)
+
+        # Collect CPU usage
+        cpu_usage = self.get_current_cpu_usage()
+        self.metrics_data["cpu"].append(cpu_usage)
+
+        # Collect memory usage
+        memory_usage = self.get_current_memory_usage()
+        self.metrics_data["memory"].append(memory_usage)
+
+        # Collect disk usage for each tier
+        disk_data = {}
+        for tier in tiers:
+            if os.path.exists(tier):
+                total, used, free = self._get_disk_usage(tier)
+                disk_data[tier] = {
+                    "total_bytes": total,
+                    "used_bytes": used,
+                    "free_bytes": free,
+                    "used_percent": (used / total * 100) if total > 0 else 0,
+                }
+
+        self.metrics_data["disk"].append(disk_data)
+
+        # Collect network metrics if enabled
+        if self.config.get("collection.system_metrics.network.enabled", False):
+            network_data = self._get_network_metrics()
+            self.metrics_data["network"].append(network_data)
 
     def _get_linux_cpu_usage(self) -> float:
         """

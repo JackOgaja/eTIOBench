@@ -23,6 +23,14 @@ from tdiobench.utils.parameter_standards import standard_parameters
 
 logger = logging.getLogger("tdiobench.analysis.statistics")
 
+# Import C++ integration for enhanced performance
+try:
+    from tdiobench.cpp_integration import CppIntegrationConfig, CppStatisticalAnalyzer, CPP_AVAILABLE
+    logger.info(f"C++ integration available: {CPP_AVAILABLE}")
+except ImportError:
+    CPP_AVAILABLE = False
+    logger.info("C++ integration not available, using Python implementations")
+
 
 class StatisticalAnalyzer:
     """
@@ -40,9 +48,21 @@ class StatisticalAnalyzer:
             config: Benchmark configuration
         """
         self.config = config
-        self.confidence_level = config.get("analysis.statistics.confidence_level", 95) / 100.0
-        self.outlier_detection = config.get("analysis.statistics.outlier_detection", True)
-        self.percentiles = config.get("analysis.statistics.percentiles", [50, 95, 99, 99.9])
+        self.confidence_level = config.get("analysis.statistical.confidence_level", 95) / 100.0
+        self.outlier_detection = config.get("analysis.statistical.detect_outliers", True)
+        self.percentiles = config.get("analysis.statistical.percentiles", [50, 95, 99, 99.9])
+        
+        # Initialize C++ integration if available
+        if CPP_AVAILABLE:
+            cpp_config = CppIntegrationConfig(
+                use_cpp=config.get("benchmark_suite.analysis.statistical.use_cpp", True),
+                min_data_size_for_cpp=config.get("benchmark_suite.analysis.statistical.min_data_size_for_cpp", 100)
+            )
+            self.cpp_analyzer = CppStatisticalAnalyzer(cpp_config)
+            logger.info("C++ statistical analyzer initialized for enhanced performance")
+        else:
+            self.cpp_analyzer = None
+            logger.info("Using Python statistical implementations")
 
     @standard_method_name("analyze")
     @standard_parameters
@@ -56,7 +76,8 @@ class StatisticalAnalyzer:
         Returns:
             AnalysisResult containing statistical analysis results
         """
-        logger.info("Performing statistical analysis of benchmark data")
+        logger.info("🔍 STARTING STATISTICAL ANALYSIS WITH C++ INTEGRATION")
+        logger.info(f"Analyzing benchmark data with {len(benchmark_data.get_tiers())} tiers")
 
         # Initialize analysis result
         result = AnalysisResult(
@@ -94,6 +115,7 @@ class StatisticalAnalyzer:
         # Add recommendations based on statistics
         self._add_statistical_recommendations(result, overall_stats)
 
+        logger.info("✅ STATISTICAL ANALYSIS COMPLETED WITH C++ INTEGRATION")
         return result
 
     @standard_method_name("calculate")
@@ -209,6 +231,51 @@ class StatisticalAnalyzer:
             logger.error(f"Error detecting outliers: {str(e)}")
             raise BenchmarkAnalysisError(f"Failed to detect outliers: {str(e)}")
 
+    def _calculate_fast_statistics(self, data: List[float]) -> Dict[str, float]:
+        """
+        Calculate basic statistics using C++ implementation if available, fallback to Python.
+        
+        Args:
+            data: List of numeric values
+            
+        Returns:
+            Dictionary with basic statistical measures
+        """
+        if not data:
+            return {"mean": 0.0, "stddev": 0.0, "variance": 0.0, "min": 0.0, "max": 0.0, "count": 0}
+        
+        if self.cpp_analyzer and len(data) >= 10:
+            try:
+                cpp_result = self.cpp_analyzer.calculate_basic_statistics(data)
+                logger.info(f"✅ Used C++ acceleration for {len(data)} data points - mean: {cpp_result['mean']:.3f}")
+                return {
+                    "mean": cpp_result["mean"],
+                    "stddev": cpp_result["std_deviation"], 
+                    "variance": cpp_result["variance"],
+                    "min": cpp_result["min_value"],
+                    "max": cpp_result["max_value"],
+                    "count": cpp_result["sample_count"],
+                    "median": cpp_result["median"],
+                    "skewness": cpp_result["skewness"],
+                    "kurtosis": cpp_result["kurtosis"]
+                }
+            except Exception as e:
+                logger.warning(f"C++ calculation failed, falling back to Python: {e}")
+        
+        # Fallback to Python statistics
+        logger.debug(f"Using Python statistics for {len(data)} data points")
+        return {
+            "mean": statistics.mean(data),
+            "stddev": statistics.stdev(data) if len(data) > 1 else 0,
+            "variance": statistics.variance(data) if len(data) > 1 else 0,
+            "min": min(data),
+            "max": max(data),
+            "count": len(data),
+            "median": statistics.median(data),
+            "skewness": 0.0,  # Not available in basic Python statistics
+            "kurtosis": 0.0   # Not available in basic Python statistics
+        }
+
     def _analyze_test_data(self, test_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyze test data and calculate statistics.
@@ -219,18 +286,37 @@ class StatisticalAnalyzer:
         Returns:
             Dictionary with calculated statistics
         """
+        logger.info(f"Analyzing test data with keys: {list(test_data.keys())}")
+        
+        # Log data types for throughput
+        if "throughput_MBps" in test_data:
+            data_type = type(test_data["throughput_MBps"]).__name__
+            data_sample = test_data["throughput_MBps"]
+            logger.info(f"Throughput data type: {data_type}, sample: {data_sample}")
+        
         stats = {}
 
         # Process throughput data
         if "throughput_MBps" in test_data:
             if isinstance(test_data["throughput_MBps"], list):
                 values = test_data["throughput_MBps"]
+                logger.info(f"Processing throughput array with {len(values)} values")
+                
+                # Use C++ accelerated statistics calculation
+                fast_stats = self._calculate_fast_statistics(values)
                 stats["throughput_MBps"] = {
-                    "mean": statistics.mean(values) if values else 0,
-                    "min": min(values) if values else 0,
-                    "max": max(values) if values else 0,
-                    "stddev": statistics.stdev(values) if len(values) > 1 else 0,
+                    "mean": fast_stats["mean"],
+                    "min": fast_stats["min"],
+                    "max": fast_stats["max"],
+                    "stddev": fast_stats["stddev"],
+                    "count": fast_stats["count"],
+                    "median": fast_stats["median"]
                 }
+                
+                # Add additional C++ statistics if available
+                if "skewness" in fast_stats:
+                    stats["throughput_MBps"]["skewness"] = fast_stats["skewness"]
+                    stats["throughput_MBps"]["kurtosis"] = fast_stats["kurtosis"]
 
                 # Calculate percentiles
                 sorted_values = sorted(values)
@@ -264,12 +350,22 @@ class StatisticalAnalyzer:
         if "iops" in test_data:
             if isinstance(test_data["iops"], list):
                 values = test_data["iops"]
+                
+                # Use C++ accelerated statistics calculation
+                fast_stats = self._calculate_fast_statistics(values)
                 stats["iops"] = {
-                    "mean": statistics.mean(values) if values else 0,
-                    "min": min(values) if values else 0,
-                    "max": max(values) if values else 0,
-                    "stddev": statistics.stdev(values) if len(values) > 1 else 0,
+                    "mean": fast_stats["mean"],
+                    "min": fast_stats["min"],
+                    "max": fast_stats["max"],
+                    "stddev": fast_stats["stddev"],
+                    "count": fast_stats["count"],
+                    "median": fast_stats["median"]
                 }
+                
+                # Add additional C++ statistics if available
+                if "skewness" in fast_stats:
+                    stats["iops"]["skewness"] = fast_stats["skewness"]
+                    stats["iops"]["kurtosis"] = fast_stats["kurtosis"]
 
                 # Calculate percentiles
                 sorted_values = sorted(values)

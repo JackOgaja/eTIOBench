@@ -1093,6 +1093,15 @@ class BenchmarkResult:
             "parameters": self.parameters,
         }
         
+        # Include analysis results if available
+        if hasattr(self, 'analysis_results') and self.analysis_results:
+            result["analysis_results"] = {}
+            for analysis_type, analysis_result in self.analysis_results.items():
+                if hasattr(analysis_result, 'to_dict'):
+                    result["analysis_results"][analysis_type] = analysis_result.to_dict()
+                else:
+                    result["analysis_results"][analysis_type] = analysis_result
+        
         # Include time series data if available
         if hasattr(self, 'time_series') and self.time_series:
             result["time_series"] = self.time_series
@@ -1188,13 +1197,13 @@ class BenchmarkResult:
         """
         self.metrics.update(metrics)
 
-    def add_analysis_results(self, analysis_type: str, results: Dict[str, Any]) -> None:
+    def add_analysis_results(self, analysis_type: str, results: Union[Dict[str, Any], "AnalysisResult"]) -> None:
         """
         Add analysis results to the benchmark result.
 
         Args:
             analysis_type: Type of analysis (e.g., "statistics", "anomaly")
-            results: Analysis results dictionary
+            results: Analysis results dictionary or AnalysisResult object
         """
         # Use the pre-initialized self.analysis_results dictionary
         self.analysis_results[analysis_type] = results
@@ -1211,7 +1220,7 @@ class BenchmarkResult:
         Returns:
             New BenchmarkResult instance
         """
-        return cls(
+        instance = cls(
             run_id=data.get("run_id", str(uuid.uuid4())),
             tier_name=data.get("tier_name", "unknown"),
             profile_name=data.get("profile_name", "unknown"),
@@ -1221,6 +1230,20 @@ class BenchmarkResult:
             parameters=data.get("parameters", {}),
             raw_data=data.get("raw_data", {}),
         )
+        
+        # Restore analysis results if available
+        if "analysis_results" in data:
+            instance.analysis_results = data["analysis_results"]
+            
+        # Restore time series data if available
+        if "time_series" in data:
+            instance.time_series = data["time_series"]
+            
+        # Restore system metrics data if available  
+        if "system_metrics" in data:
+            instance.system_metrics = data["system_metrics"]
+            
+        return instance
 
     @classmethod
     def from_benchmark_data(cls, benchmark_data: "BenchmarkData") -> "BenchmarkResult":
@@ -1541,6 +1564,23 @@ class BenchmarkData:
         if "tier_results" not in self._data:
             self._data["tier_results"] = {}
         self._data["tier_results"][tier] = result
+        
+        # Consolidate time series data from tier results into main time_series
+        if "time_series" in result and result["time_series"]:
+            if "time_series" not in self._data:
+                self._data["time_series"] = []
+            
+            # Add tier information to each time series data point
+            tier_time_series = result["time_series"]
+            if isinstance(tier_time_series, list):
+                for data_point in tier_time_series:
+                    if isinstance(data_point, dict):
+                        data_point["tier"] = tier
+                self._data["time_series"].extend(tier_time_series)
+            elif isinstance(tier_time_series, dict):
+                # Handle single data point
+                tier_time_series["tier"] = tier
+                self._data["time_series"].append(tier_time_series)
         
         # Also add tier to the tiers list if not already present
         if "tiers" not in self._data:

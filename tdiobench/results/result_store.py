@@ -15,11 +15,28 @@ import os
 import sqlite3
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from tdiobench.core.benchmark_config import BenchmarkConfig
 from tdiobench.core.benchmark_data import BenchmarkResult
 from tdiobench.core.benchmark_exceptions import BenchmarkStorageError
 
 logger = logging.getLogger("tdiobench.results")
+
+
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+    
+    def default(self, obj):
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 
 class ResultStore:
@@ -174,7 +191,7 @@ class ResultStore:
         result_path = os.path.join(self.base_dir, f"{result_id}.json")
 
         with open(result_path, "w") as f:
-            json.dump(benchmark_result.to_dict(), f, indent=2)
+            json.dump(benchmark_result.to_dict(), f, indent=2, cls=NumpyJSONEncoder)
 
         # Time series data is now embedded in the main JSON file
         # No need for separate time series files
