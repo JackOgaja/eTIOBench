@@ -234,26 +234,112 @@ benchmark-suite dashboard --data benchmark_data.json --output dashboard.html
 
 ## Architecture
 
-The Enhanced Tiered Storage I/O Benchmark Suite is organized into several key components:
+This is a high-level architectural overview of the eTIOBench system.
 
-- **Core**: Configuration management, safety monitoring, and benchmark orchestration
-- **Engines**: Benchmark execution engines (currently FIO)
-- **Collection**: Time series data collection and system metrics
-- **Analysis**: Statistical analysis, anomaly detection, and correlation analysis
-- **Visualization**: Chart generation and reporting
-- **Results**: Result storage and management
+### System Architecture
 
+The following diagram illustrates the architecture of eTIOBench:
+
+```mermaid
+graph TD
+    subgraph User Interface
+        CLI[Command Line Interface]
+        Config[Configuration Files]
+    end
+
+    subgraph Core Components
+        TDIOCore[tdiobench Core Module]
+        BenchManager[Benchmark Manager]
+        Analyzers[Data Analyzers]
+    end
+
+    subgraph Storage & I/O Engine
+        IOGenerators[I/O Workload Generators]
+        StorageAccess[Storage System Interface]
+        TimeSeriesImpl[Time Series Implementation]
+    end
+
+    subgraph Target Systems
+        MultiTier[Multi-tier Storage Systems]
+        DistributedFS[Distributed File Systems]
+    end
+
+    subgraph Results Processing
+        MetricsCollector[Metrics Collection]
+        Visualizer[Data Visualization]
+        ResultsExport[Results Export]
+    end
+
+    CLI --> TDIOCore
+    Config --> TDIOCore
+    
+    TDIOCore --> BenchManager
+    BenchManager --> IOGenerators
+    BenchManager --> Analyzers
+    
+    IOGenerators --> StorageAccess
+    StorageAccess --> MultiTier
+    StorageAccess --> DistributedFS
+    TimeSeriesImpl --> StorageAccess
+    
+    MultiTier --> MetricsCollector
+    DistributedFS --> MetricsCollector
+    
+    MetricsCollector --> Analyzers
+    Analyzers --> Visualizer
+    Analyzers --> ResultsExport
 ```
-benchmark_suite/
-├── cli/            # Command-line interface
-├── core/           # Core components 
-├── engines/        # Benchmark execution engines
-├── collection/     # Data collection modules
-├── analysis/       # Analysis modules
-├── visualization/  # Report and chart generation
-├── results/        # Result storage
-└── utils/          # Utility functions
-```
+
+### Component Descriptions
+
+#### User Interface
+- **Command Line Interface (CLI)**: Provides command-line tools for configuring and running benchmarks.
+- **Configuration Files**: YAML or JSON files defining benchmark parameters and storage system configurations.
+
+#### Core Components
+- **tdiobench Core Module**: Central codebase that implements the main functionality of eTIOBench.
+- **Benchmark Manager**: Coordinates benchmark execution, handles workload scheduling, and manages the overall workflow.
+- **Data Analyzers**: Process collected metrics and performance data to generate insights.
+
+#### Storage & I/O Engine
+- **I/O Workload Generators**: Creates synthetic workloads based on user specifications to test storage systems.
+- **Storage System Interface**: Provides abstraction layers to interact with different storage systems.
+- **Time Series Implementation**: Specialized handling for time series data as described in TIME_SERIES_IMPLEMENTATION.md.
+
+#### Target Systems
+- **Multi-tier Storage Systems**: Primary target systems being benchmarked, with support for tiered storage architectures.
+- **Distributed File Systems**: Support for evaluating distributed storage performance.
+
+#### Results Processing
+- **Metrics Collection**: Gathers performance metrics during benchmark execution.
+- **Data Visualization**: Creates charts and visual representations of performance data.
+- **Results Export**: Exports results in various formats for further analysis.
+
+### Directory Structure
+
+The repository is organized into the following key directories:
+
+- **tdiobench/**: Main source code directory containing the core implementation
+- **scripts/**: Utility scripts for running benchmarks and processing results
+- **examples/**: Example configurations and use cases
+- **docs/**: Documentation files
+- **results/**: Default location for storing benchmark results
+
+### Implementation Details
+
+eTIOBench is primarily implemented in Python (77.5%) with performance-critical components written in C++ (21.2%). This hybrid approach allows for both ease of use and high-performance I/O operations when needed.
+
+The system uses a modular architecture that enables testing of various storage configurations, with particular focus on multi-tier storage systems. The TIME_SERIES_IMPLEMENTATION.md file describes specialized support for time series data workloads.
+
+### User Workflow
+
+1. Users configure benchmarks through configuration files or command-line arguments
+2. The Benchmark Manager schedules and executes the appropriate I/O workloads
+3. Metrics are collected during execution from the target storage systems
+4. Analyzers process the raw metrics into meaningful performance indicators
+5. Results are visualized and exported for analysis and comparison
+
+This is high-levekl visual representation of eTIOBench's components and their interactions, serving as a useful reference for both users and contributors to the project.
 
 ## Safety Features
 
